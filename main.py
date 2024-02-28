@@ -4,29 +4,20 @@ from mujoco.glfw import glfw
 
 from mujoco_base import MuJoCoBase
 
-# # Define states for the finite state machine
-# FSM_HOLD = 0
-# FSM_SWING1 = 1
-# FSM_SWING2 = 2
-# FSM_STOP = 3
+# Define states for the finite state machine
+FSM_STOP = 0
+FSM_MOVE = 1
 
-
-class LegSwing(MuJoCoBase):
+class Fetoscope(MuJoCoBase):
     def __init__(self, xml_path):
         super().__init__(xml_path)
-        self.simend = 20.
-        # self.fsm_state = FSM_HOLD
+        self.sim_end = 20.
+        self.fsm_state = FSM_STOP
 
-        # # Define durations of each state
-        # self.t_hold = 0.5
-        # self.t_swing1 = 1.0
-        # self.t_swing2 = 1.0
+        # Define durations of each state
+        self.t_move = 18
 
-        # New camera
-        self.cam2 = mj.MjvCamera() 
-        self.cam2.type = mj.mjtCamera.mjCAMERA_FIXED
-        self.cam2.fixedcamid = 0
-
+    
         # # Define setpoints
         # self.q_init = np.array([[-1.0], [0.0]])
         # self.q_mid = np.array([[0.5], [-2.0]])
@@ -48,10 +39,10 @@ class LegSwing(MuJoCoBase):
         # self.data.qpos[0] = -1
 
         # Set camera configuration
-        self.cam.azimuth = 89.608063
-        self.cam.elevation = -11.588379
-        self.cam.distance = 5.0
-        self.cam.lookat = np.array([0.0, 0.0, 1.5])
+        self.cam.azimuth = 90.0
+        self.cam.elevation = -12.0
+        self.cam.distance = 2.0
+        self.cam.lookat = np.array([0.0, 0.0, 0.0])
 
         # self.fsm_state = FSM_HOLD
 
@@ -98,15 +89,48 @@ class LegSwing(MuJoCoBase):
         # data.ctrl = kp * (q_ref[:, 0] - data.qpos) + \
         #     kv * (dq_ref[:, 0] - data.qvel)
 
+
+    def renderSecondScreen(self):
+            viewport_width, viewport_height = glfw.get_framebuffer_size(
+                    self.window)
+            
+            pos_x = (int)(viewport_width*4/5)
+            pos_y = (int)(viewport_height*4/5)
+            width = (int)(viewport_width*1/5)
+            height = (int)(viewport_height*1/5)
+
+            viewport2 = mj.MjrRect(pos_x,pos_y,width ,height )
+        
+            # Define fetoscope camera
+            camera_name = 'eye'
+            camera_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_CAMERA, camera_name)
+
+            self.cam2 = mj.MjvCamera() 
+            self.cam2.type = mj.mjtCamera.mjCAMERA_FIXED 
+            self.cam2.fixedcamid = camera_id
+
+            mj.mjv_updateScene(self.model, self.data, self.opt, None, self.cam2,
+                                mj.mjtCatBit.mjCAT_ALL.value, self.scene)
+            
+            pixels = np.zeros((height * width * 3, 1), dtype=np.uint8)  # Placeholder for pixel data
+
+            mj.mjr_render(viewport2, self.scene, self.context)
+
+            mj.mjr_readPixels(pixels, None, viewport2, self.context)
+
+            mj.mjr_drawPixels(pixels, None, viewport2, self.context)
+
+
+
     def simulate(self):
         while not glfw.window_should_close(self.window):
-            simstart = self.data.time
+            sim_start = self.data.time
 
-            while (self.data.time - simstart < 1.0/60.0):
+            while (self.data.time - sim_start < 1.0/60.0):
                 # Step simulation environment
                 mj.mj_step(self.model, self.data)
 
-            if self.data.time >= self.simend:
+            if self.data.time >= self.sim_end:
                 break
 
             # get framebuffer viewport
@@ -119,6 +143,8 @@ class LegSwing(MuJoCoBase):
                                mj.mjtCatBit.mjCAT_ALL.value, self.scene)
             mj.mjr_render(viewport, self.scene, self.context)
 
+            self.renderSecondScreen()
+
             # swap OpenGL buffers (blocking call due to v-sync)
             glfw.swap_buffers(self.window)
 
@@ -126,6 +152,7 @@ class LegSwing(MuJoCoBase):
             glfw.poll_events()
 
         glfw.terminate()
+
 
     # def generate_trajectory(self, t0, tf, q0, qf):
     #     """
@@ -152,7 +179,7 @@ class LegSwing(MuJoCoBase):
 
 def main():
     xml_path = "model/placenta.xml"
-    sim = LegSwing(xml_path)
+    sim = Fetoscope(xml_path)
     sim.reset()
     sim.simulate()
 

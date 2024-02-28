@@ -11,8 +11,6 @@ class MuJoCoBase():
         self.lastx = 0
         self.lasty = 0
 
-
-
         # MuJoCo data structures
         self.model = mj.MjModel.from_xml_path(xml_path)  # MuJoCo model
         self.data = mj.MjData(self.model)                # MuJoCo data

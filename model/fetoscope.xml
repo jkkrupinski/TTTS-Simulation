@@ -1,0 +1,21 @@
+<mujoco model="fetoscope">
+
+	<option timestep="0.0001" integrator="RK4" >
+		<flag sensornoise="enable" energy="enable" contact="enable" />
+	</option>
+
+	<worldbody>
+
+		<body pos="0 0 0.3" euler="0 179 0">
+		  	<joint type="ball" pos ="0 0 -0.16"/>
+			<geom type="cylinder" size="0.003 0.2" rgba="0.9 .9 0.9 1" mass="1"/>
+			<camera name="eye" mode="fixed" pos="0 0 0" euler='0 180 0' />
+			<light specular=".5 .5 .5" pos="0 0 0.2" dir="0 0 1"/>
+
+		</body>
+
+	</worldbody>
+
+
+    
+</mujoco>
