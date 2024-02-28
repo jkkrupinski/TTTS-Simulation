@@ -186,3 +186,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# get fov for fetoscope
+# get distance from placenta
+# check fetoscope dimensions
+
+    
+# augment image from fetoscope
+# save img from fetoscope
+# create contoller for fetoscope
+
