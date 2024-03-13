@@ -1,129 +1,95 @@
+import cv2
 import mujoco as mj
 import numpy as np
 from mujoco.glfw import glfw
-
 from mujoco_base import MuJoCoBase
 
-# Define states for the finite state machine
-FSM_STOP = 0
-FSM_MOVE = 1
 
 class Fetoscope(MuJoCoBase):
     def __init__(self, xml_path):
         super().__init__(xml_path)
-        self.sim_end = 20.
-        self.fsm_state = FSM_STOP
+        self.sim_end = 100.
+        self.render_dims = 256
+        self.save_imgs = False
 
-        # Define durations of each state
-        self.t_move = 18
-
-    
-        # # Define setpoints
-        # self.q_init = np.array([[-1.0], [0.0]])
-        # self.q_mid = np.array([[0.5], [-2.0]])
-        # self.q_end = np.array([[1.0], [0.0]])
-
-        # # Define setpoint times
-        # self.t_init = self.t_hold
-        # self.t_mid = self.t_hold + self.t_swing1
-        # self.t_end = self.t_hold + self.t_swing1 + self.t_swing2
-
-        # # Get trajectories
-        # self.a_swing1 = self.generate_trajectory(
-        #     self.t_init, self.t_mid, self.q_init, self.q_mid)
-        # self.a_swing2 = self.generate_trajectory(
-        #     self.t_mid, self.t_end, self.q_mid, self.q_end)
 
     def reset(self):
-        # Set initial angle of pendulum
-        # self.data.qpos[0] = -1
-
         # Set camera configuration
         self.cam.azimuth = 90.0
-        self.cam.elevation = -12.0
+        self.cam.elevation = -24.0
         self.cam.distance = 2.0
         self.cam.lookat = np.array([0.0, 0.0, 0.0])
 
-        # self.fsm_state = FSM_HOLD
-
-        # mj.set_mjcb_control(self.controller)
-
-    # def controller(self, model, data):
-        # """
-        # This function implements a PD controller for tracking
-        # the reference motion.
-        # """
-        # time = data.time
-
-        # # Check for state change
-        # if self.fsm_state == FSM_HOLD and time >= self.t_hold:
-        #     self.fsm_state = FSM_SWING1
-        # elif self.fsm_state == FSM_SWING1 and time >= self.t_mid:
-        #     self.fsm_state = FSM_SWING2
-        # elif self.fsm_state == FSM_SWING2 and time >= self.t_end:
-        #     self.fsm_state = FSM_STOP
-
-        # # Get reference joint position & velocity
-        # if self.fsm_state == FSM_HOLD:
-        #     q_ref = self.q_init
-        #     dq_ref = np.zeros((2, 1))
-        # elif self.fsm_state == FSM_SWING1:
-        #     q_ref = self.a_swing1[0] + self.a_swing1[1]*time + \
-        #         self.a_swing1[2]*(time**2) + self.a_swing1[3]*(time**3)
-        #     dq_ref = self.a_swing1[1] + 2 * self.a_swing1[2] * \
-        #         time + 3 * self.a_swing1[3]*(time**2)
-        # elif self.fsm_state == FSM_SWING2:
-        #     q_ref = self.a_swing2[0] + self.a_swing2[1]*time + \
-        #         self.a_swing2[2]*(time**2) + self.a_swing2[3]*(time**3)
-        #     dq_ref = self.a_swing2[1] + 2 * self.a_swing2[2] * \
-        #         time + 3 * self.a_swing2[3]*(time**2)
-        # elif self.fsm_state == FSM_STOP:
-        #     q_ref = self.q_end
-        #     dq_ref = np.zeros((2, 1))
-
-        # # Define PD gains
-        # kp = 500
-        # kv = 50
-
-        # # Compute PD control
-        # data.ctrl = kp * (q_ref[:, 0] - data.qpos) + \
-        #     kv * (dq_ref[:, 0] - data.qvel)
+        # Set controller
+        mj.set_mjcb_control(self.controller)
 
 
-    def renderSecondScreen(self):
-            viewport_width, viewport_height = glfw.get_framebuffer_size(
-                    self.window)
-            
-            pos_x = (int)(viewport_width*4/5)
-            pos_y = (int)(viewport_height*4/5)
-            width = (int)(viewport_width*1/5)
-            height = (int)(viewport_height*1/5)
+    def controller(self, model, data):
+        # Set angles for x and y axis
+        self.data.ctrl[0] = 0.5
+        self.data.ctrl[1] = -0.2
 
-            viewport2 = mj.MjrRect(pos_x,pos_y,width ,height )
+
+    def renderMainScreen(self, viewport_width, viewport_height):
+
+        viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
+
+        mj.mjv_updateScene(self.model, self.data, self.opt, None, self.cam,
+                            mj.mjtCatBit.mjCAT_ALL.value, self.scene)
+        mj.mjr_render(viewport, self.scene, self.context)
+
+
+    def renderSecondaryScreen(self, viewport_width, viewport_height, frame_counter):
+        # Define viewport recangle position and size     
+        pos_x = viewport_width-self.render_dims
+        pos_y = viewport_height-self.render_dims
+        width = self.render_dims
+        height = self.render_dims
+
+        feto_viewport = mj.MjrRect(pos_x,pos_y,width ,height )
+    
+        # Define fetoscope camera
+        camera_name = 'eye'
+        camera_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_CAMERA, camera_name)
+
+        self.feto_cam = mj.MjvCamera() 
+        self.feto_cam.type = mj.mjtCamera.mjCAMERA_FIXED 
+        self.feto_cam.fixedcamid = camera_id
+
+        mj.mjv_updateScene(self.model, self.data, self.opt, None, self.feto_cam,
+                            mj.mjtCatBit.mjCAT_ALL.value, self.scene)
         
-            # Define fetoscope camera
-            camera_name = 'eye'
-            camera_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_CAMERA, camera_name)
+        # Placeholder for pixel data
+        pixels = np.zeros((height * width * 3, 1), dtype=np.uint8)  
 
-            self.cam2 = mj.MjvCamera() 
-            self.cam2.type = mj.mjtCamera.mjCAMERA_FIXED 
-            self.cam2.fixedcamid = camera_id
+        mj.mjr_render(feto_viewport, self.scene, self.context)
 
-            mj.mjv_updateScene(self.model, self.data, self.opt, None, self.cam2,
-                                mj.mjtCatBit.mjCAT_ALL.value, self.scene)
+        mj.mjr_readPixels(pixels, None, feto_viewport, self.context)
+
+        if self.save_imgs:
+            path = "imgs/img_" + str(frame_counter) + ".png"
+            reshaped_array = pixels.reshape(self.render_dims,self.render_dims,3)
+            bgr_array = cv2.cvtColor(reshaped_array, cv2.COLOR_RGB2BGR)
+
+            mask = cv2.imread("mask/mask.png")
+            mask = cv2.cvtColor(mask,cv2.COLOR_BGR2GRAY)
+            masked_img = cv2.bitwise_and(bgr_array, bgr_array, mask=mask)
             
-            pixels = np.zeros((height * width * 3, 1), dtype=np.uint8)  # Placeholder for pixel data
+            cv2.imwrite(path, masked_img)
 
-            mj.mjr_render(viewport2, self.scene, self.context)
-
-            mj.mjr_readPixels(pixels, None, viewport2, self.context)
-
-            mj.mjr_drawPixels(pixels, None, viewport2, self.context)
-
+        mj.mjr_drawPixels(pixels, None, feto_viewport, self.context)
 
 
     def simulate(self):
+
+        # Set initial angles [0]-> x, [1]-> y
+        # self.data.qpos[0] = 0.1
+        # self.data.qpos[1] = 0.1
+
+        frame_counter = 0
         while not glfw.window_should_close(self.window):
+
+            frame_counter+=1
             sim_start = self.data.time
 
             while (self.data.time - sim_start < 1.0/60.0):
@@ -133,48 +99,21 @@ class Fetoscope(MuJoCoBase):
             if self.data.time >= self.sim_end:
                 break
 
-            # get framebuffer viewport
+            # Get framebuffer viewport
             viewport_width, viewport_height = glfw.get_framebuffer_size(
                 self.window)
-            viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
-
+           
             # Update scene and render
-            mj.mjv_updateScene(self.model, self.data, self.opt, None, self.cam,
-                               mj.mjtCatBit.mjCAT_ALL.value, self.scene)
-            mj.mjr_render(viewport, self.scene, self.context)
+            self.renderMainScreen(viewport_width, viewport_height)
+            self.renderSecondaryScreen(viewport_width, viewport_height, frame_counter)
 
-            self.renderSecondScreen()
-
-            # swap OpenGL buffers (blocking call due to v-sync)
+            # Swap OpenGL buffers (blocking call due to v-sync)
             glfw.swap_buffers(self.window)
 
-            # process pending GUI events, call GLFW callbacks
+            # Process pending GUI events, call GLFW callbacks
             glfw.poll_events()
 
         glfw.terminate()
-
-
-    # def generate_trajectory(self, t0, tf, q0, qf):
-    #     """
-    #     Generates a trajectory
-    #     q(t) = a0 + a1t + a2t^2 + a3t^3
-    #     which satisfies the boundary condition
-    #     q(t0) = q0, q(tf) = qf, dq(t0) = 0, dq(tf) = 0
-    #     """
-    #     tf_t0_3 = (tf - t0)**3
-    #     a0 = qf*(t0**2)*(3*tf-t0) + q0*(tf**2)*(tf-3*t0)
-    #     a0 = a0 / tf_t0_3
-
-    #     a1 = 6 * t0 * tf * (q0 - qf)
-    #     a1 = a1 / tf_t0_3
-
-    #     a2 = 3 * (t0 + tf) * (qf - q0)
-    #     a2 = a2 / tf_t0_3
-
-    #     a3 = 2 * (q0 - qf)
-    #     a3 = a3 / tf_t0_3
-
-    #     return a0, a1, a2, a3
 
 
 def main():
@@ -191,9 +130,10 @@ if __name__ == "__main__":
 # get fov for fetoscope
 # get distance from placenta
 # check fetoscope dimensions
-
-    
+  
 # augment image from fetoscope
-# save img from fetoscope
 # create contoller for fetoscope
+# try to move fetoscope in plane XY
 
+# input segmented placenta
+# implement pix2pix or stable diffusion
