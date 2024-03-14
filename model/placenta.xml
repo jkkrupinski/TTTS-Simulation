@@ -12,9 +12,9 @@
   </default>
 
   <asset>
-    <texture type="2d" name="0" file="0.png"/>
+    <texture type="2d" name="0" file="texture.png"/>
     <material name="material_0" texture="0" specular="0.4" shininess="0.001"/>
-    <mesh file="Placenta_0.obj"/>
+    <mesh file="placenta.obj"/>
   </asset>
 
   <worldbody>
@@ -22,8 +22,8 @@
     <geom type="plane" size="1 1 0.1" rgba="0.8 0.8 0.8 1"/>
 
     <body name="placenta" pos="0 0 0" euler="90 0 0">
-      <geom material="material_0" mesh="Placenta_0" class="visual"/>
-      <geom mesh="Placenta_0" class="collision"/>
+      <geom material="material_0" mesh="placenta" class="visual"/>
+      <geom mesh="placenta" class="collision"/>
     </body>
   </worldbody>
   

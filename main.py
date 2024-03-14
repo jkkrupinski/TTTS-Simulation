@@ -11,6 +11,8 @@ class Fetoscope(MuJoCoBase):
         self.sim_end = 100.
         self.render_dims = 256
         self.save_imgs = False
+        self.feto_cam = mj.MjvCamera() 
+
 
 
     def reset(self):
@@ -52,7 +54,6 @@ class Fetoscope(MuJoCoBase):
         camera_name = 'eye'
         camera_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_CAMERA, camera_name)
 
-        self.feto_cam = mj.MjvCamera() 
         self.feto_cam.type = mj.mjtCamera.mjCAMERA_FIXED 
         self.feto_cam.fixedcamid = camera_id
 
