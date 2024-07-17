@@ -1,0 +1,12 @@
+<mujoco model="main">
+
+
+  <compiler angle="radian" autolimits="true" strippath="false" />
+
+
+  <include file="fetoscope/fetoscope.xml"/>
+  <include file="placenta/placenta.xml"/>
+  <include file="ufactory_xarm7/xarm7_nohand.xml"/>
+
+
+</mujoco>

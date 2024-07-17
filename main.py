@@ -30,6 +30,7 @@ class Fetoscope(MuJoCoBase):
         # Set angles for x and y axis
         self.data.ctrl[0] = 0.5
         self.data.ctrl[1] = -0.2
+        # pass
 
 
     def renderMainScreen(self, viewport_width, viewport_height):
@@ -118,7 +119,7 @@ class Fetoscope(MuJoCoBase):
 
 
 def main():
-    xml_path = "model/placenta.xml"
+    xml_path = "scene/main.xml"
     sim = Fetoscope(xml_path)
     sim.reset()
     sim.simulate()
