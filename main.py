@@ -28,9 +28,10 @@ class Fetoscope(MuJoCoBase):
 
     def controller(self, model, data):
         # Set angles for x and y axis
-        self.data.ctrl[0] = 0.5
-        self.data.ctrl[1] = -0.2
-        # pass
+        # self.data.ctrl[0] = 0.5
+        self.data.ctrl[5] = -0.1
+
+        pass
 
 
     def renderMainScreen(self, viewport_width, viewport_height):

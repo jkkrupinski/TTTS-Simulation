@@ -39,7 +39,7 @@
   </default>
 
   <worldbody>
-    <body name="link_base" pos="-0.25 0 0" childclass="xarm7">
+    <body name="link_base" pos="-0.25 0 0.25" childclass="xarm7">
       <inertial pos="-0.021131 -0.0016302 0.056488" quat="0.696843 0.20176 0.10388 0.680376" mass="0.88556"
         diaginertia="0.00382023 0.00335282 0.00167725"/>
       <geom mesh="link_base"/>
@@ -79,6 +79,11 @@
                     <joint name="joint7" class="size3"/>
                     <geom material="gray" mesh="end_tool"/>
                     <site name="attachment_site"/>
+                    <body name="tool" pos="0 0 0.15" quat="1 0 0 0">
+                      <geom type="cylinder" size="0.003 0.15" rgba="0.9 .9 0.9 1" mass="1"/>
+                      <camera name="eye" mode="fixed" pos="0 0 0" euler='0 3.141592654 0' fovy="5"/>
+                      <light specular=".1 .1 .1" pos="0 0 0.15" dir="0 0 1" />
+                    </body>
                   </body>
                 </body>
               </body>
@@ -100,6 +105,6 @@
   </actuator>
 
   <keyframe>
-    <key name="home" qpos="0 0   0 -.247 0 .909 0 1.15644 0" ctrl="0 0    0 -.247 0 .909 0 1.15644 0"/>
+    <key name="home" qpos="0 -.247 0 .909 0 1.15644 0" ctrl="0 -.247 0 .909 0 1.15644 0"/>
   </keyframe>
 </mujoco>

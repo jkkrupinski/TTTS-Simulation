@@ -18,7 +18,7 @@
 
   <worldbody>
 
-    <geom type="plane" size="1 1 0.1" rgba="0.8 0.8 0.8 1"/>
+    <!-- <geom type="plane" size="1 1 0.1" rgba="0.8 0.8 0.8 1"/> -->
 
     <body name="placenta" pos="0 0 0" euler="1.5708 0 0">
       <geom material="material_0" mesh="placenta" class="visual"/>
