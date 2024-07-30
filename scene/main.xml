@@ -18,6 +18,13 @@
 
   <worldbody>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+
+    <body name="sphere" pos="0.3 -0.6 0.4">
+      <inertial pos="0 0 0" mass="0.1" diaginertia="0.0001 0.0001 0.0001"/>
+      <geom type="sphere" size="0.005" rgba="1 0 0 1"/>
+    </body>
+
   </worldbody>
 
 </mujoco>
