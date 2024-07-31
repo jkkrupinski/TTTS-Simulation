@@ -1,0 +1,11 @@
+<mujoco model="placenta_segmentation">
+    <asset>
+        <texture name="segmentation" type="2d" file="placenta/assets/segmentation.png"/>
+        <material name="textured_material" texture="segmentation"/>
+    </asset>
+
+    <worldbody>
+        <geom name="textured_geom" type="plane" pos="0 0 0.01" size="0.14 0.1 0.1" material="textured_material" euler=" 0 0 -1.5708"/>
+    </worldbody>
+
+</mujoco>

@@ -4,7 +4,10 @@
   <compiler angle="radian" autolimits="true" strippath="false" />
 
 
-  <include file="placenta/placenta.xml"/>
+  <!-- <include file="placenta/placenta.xml"/> -->
+  <include file="placenta/placenta_seg.xml"/>
+
+
   <include file="ufactory_xarm7/xarm7_tool.xml"/>
 
 
@@ -20,9 +23,9 @@
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
 
 
-    <body name="sphere" pos="0.3 -0.6 0.4">
+    <body name="sphere" pos="0 0 0">
       <inertial pos="0 0 0" mass="0.1" diaginertia="0.0001 0.0001 0.0001"/>
-      <geom type="sphere" size="0.005" rgba="1 0 0 1"/>
+      <geom type="sphere" size="0.01" rgba="1 0 0 1" contype="0" conaffinity="0"/>
     </body>
 
   </worldbody>
