@@ -23,23 +23,35 @@ class Controller(MuJoCoBase):
         xml_path = "scene/main.xml"
         super().__init__(xml_path)
 
+        self.render_dims = 256
+
         self._init_main_cam()
         self._init_feto_cam()
+        self._init_second_window()
 
         self.num_of_accuators = len(self.data.ctrl)
 
-        self.render_dims = 256
-        self.save_imgs = False
-
         self._init_kinematic_chain()
 
-        self.current_output = np.zeros(self.num_of_accuators)
         self.current_target_joint_values = np.zeros(self.num_of_accuators)
         self.image_counter = 0
 
-        self.cam_matrix = None
-        self.cam_init = False
         self.last_movement_steps = 0
+
+    def _init_second_window(self):
+        glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
+        self.second_window = glfw.create_window(
+            self.render_dims, self.render_dims, "Fetoscope View", None, None
+        )
+
+        glfw.set_window_pos(self.second_window, 1400, 200)
+
+        if not self.second_window:
+            glfw.terminate()
+            raise Exception("Second GLFW window could not be created")
+
+        glfw.make_context_current(self.second_window)
+        glfw.show_window(self.second_window)
 
     def _init_main_cam(self):
         self.cam.azimuth = 90.0
@@ -49,6 +61,10 @@ class Controller(MuJoCoBase):
 
     def _init_feto_cam(self):
         self.feto_cam = mj.MjvCamera()
+        self.feto_viewport = mj.MjrRect(0, 0, self.render_dims, self.render_dims)
+        self.context_secondary = mj.MjrContext(
+            self.model, mj.mjtFontScale.mjFONTSCALE_150
+        )
 
         camera_name = "eye"
         camera_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_CAMERA, camera_name)
@@ -71,6 +87,30 @@ class Controller(MuJoCoBase):
         self.ee_chain = ikpy.chain.Chain.from_urdf_file(
             urdf_path, active_links_mask=active_links_mask
         )
+
+    def save_feto_image(self, with_mask, frame_counter=1):
+
+        path = "imgs/img_" + str(frame_counter) + ".png"
+        gray_array = self.get_feto_image()
+
+        if with_mask:
+            mask = cv.imread("mask/mask.png")
+            mask = cv.cvtColor(mask, cv.COLOR_BGR2GRAY)
+            gray_array = cv.bitwise_and(gray_array, gray_array, mask=mask)
+
+        cv.imwrite(path, gray_array)
+
+    def get_feto_image(self):
+        pixels_buffer = np.zeros(
+            (self.render_dims * self.render_dims * 3, 1), dtype=np.uint8
+        )
+        mj.mjr_readPixels(
+            pixels_buffer, None, self.feto_viewport, self.context_secondary
+        )
+
+        reshaped_array = pixels_buffer.reshape(self.render_dims, self.render_dims, 3)
+        gray_array = cv.cvtColor(reshaped_array, cv.COLOR_RGB2GRAY)
+        return gray_array
 
     def get_ee_pos(self):
         extended_joints = np.append(0, self.data.qpos)
@@ -134,12 +174,6 @@ class Controller(MuJoCoBase):
             if render:
                 self.render()
 
-                # Swap OpenGL buffers (blocking call due to v-sync)
-                glfw.swap_buffers(self.window)
-
-                # Process pending GUI events, call GLFW callbacks
-                glfw.poll_events()
-
         self.last_movement_steps = steps
 
         return result
@@ -153,7 +187,7 @@ class Controller(MuJoCoBase):
             ee_position: List of XYZ-coordinates of the end-effector (ee_link for UR5 setup).
         """
 
-        contr.model.body("sphere").pos = ee_position
+        self.model.body("sphere").pos = ee_position
 
         joint_angles = self.ik(ee_position)
         if joint_angles is not None:
@@ -178,12 +212,6 @@ class Controller(MuJoCoBase):
 
             if render:
                 self.render()
-
-                # Swap OpenGL buffers (blocking call due to v-sync)
-                glfw.swap_buffers(self.window)
-
-                # Process pending GUI events, call GLFW callbacks
-                glfw.poll_events()
 
             elapsed = (time.time() - starting_time) * 1000
 
@@ -226,12 +254,14 @@ class Controller(MuJoCoBase):
         return None
 
     def render(self):
-        viewport_width, viewport_height = glfw.get_framebuffer_size(self.window)
-        self.render_main(viewport_width, viewport_height)
-        self.render_secondary(viewport_width, viewport_height, frame_counter=0)
+        self.render_main()
+        self.render_secondary()
+        glfw.poll_events()
 
-    def render_main(self, viewport_width, viewport_height):
+    def render_main(self):
+        viewport_width, viewport_height = glfw.get_framebuffer_size(self.window)
         main_viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
+        glfw.make_context_current(self.window)
 
         mj.mjv_updateScene(
             self.model,
@@ -242,16 +272,15 @@ class Controller(MuJoCoBase):
             mj.mjtCatBit.mjCAT_ALL.value,
             self.scene,
         )
+
         mj.mjr_render(main_viewport, self.scene, self.context)
+        glfw.swap_buffers(self.window)
 
-    def render_secondary(self, viewport_width, viewport_height, frame_counter):
-        # Define viewport rectangle position and size
-        pos_x = viewport_width - self.render_dims
-        pos_y = viewport_height - self.render_dims
-        width = self.render_dims
-        height = self.render_dims
-
-        feto_viewport = mj.MjrRect(pos_x, pos_y, width, height)
+    def render_secondary(self):
+        glfw.make_context_current(self.second_window)
+        self.context_secondary = mj.MjrContext(
+            self.model, mj.mjtFontScale.mjFONTSCALE_150
+        )
 
         mj.mjv_updateScene(
             self.model,
@@ -263,26 +292,10 @@ class Controller(MuJoCoBase):
             self.scene,
         )
 
-        # Placeholder for pixel data
-        pixels = np.zeros((height * width * 3, 1), dtype=np.uint8)
+        mj.mjr_render(self.feto_viewport, self.scene, self.context_secondary)
+        glfw.swap_buffers(self.second_window)
 
-        mj.mjr_render(feto_viewport, self.scene, self.context)
-
-        mj.mjr_readPixels(pixels, None, feto_viewport, self.context)
-
-        if self.save_imgs:
-            path = "imgs/img_" + str(frame_counter) + ".png"
-            reshaped_array = pixels.reshape(self.render_dims, self.render_dims, 3)
-            bgr_array = cv.cvtColor(reshaped_array, cv.COLOR_RGB2BGR)
-
-            mask = cv.imread("mask/mask.png")
-            mask = cv.cvtColor(mask, cv.COLOR_BGR2GRAY)
-            masked_img = cv.bitwise_and(bgr_array, bgr_array, mask=mask)
-
-            cv.imwrite(path, masked_img)
-
-        mj.mjr_drawPixels(pixels, None, feto_viewport, self.context)
-
+    ####################################################################################
 
     def show_model_info(self):
         """
@@ -523,36 +536,20 @@ def loop():
     # Loop through the angles to generate the circle's coordinates
     for i in range(num_points):
         theta = 2 * np.pi * i / num_points
-        x=center_x + radius * np.cos(theta)
-        y=center_y + radius * np.sin(theta)
-        pos = [x,y, 0.4]
+        x = center_x + radius * np.cos(theta)
+        y = center_y + radius * np.sin(theta)
+        pos = [x, y, 0.4]
         contr.move_ee(pos)
         # contr.wait_for_ms(1_000)
 
-contr = Controller()
 
-pos = [0.0, 0.0, 0.4]
-contr.move_ee(pos)
-contr.wait_for_ms(1_000)
+if __name__ == "__main__":
+    contr = Controller()
 
-loop()
+    pos = [0.0, 0.0, 0.4]
+    contr.move_ee(pos)
+    contr.save_feto_image(with_mask=False)
+    contr.wait_for_ms(1_000)
 
-# pos = [0.0, 0.02, 0.4]
-# contr.move_ee(pos)
-# contr.wait_for_ms(1_000)
-
-# pos = [0.0, 0.04, 0.4]
-# contr.move_ee(pos)
-# contr.wait_for_ms(1_000)
-
-# pos = [0.02, 0.04, 0.4]
-# contr.move_ee(pos)
-# contr.wait_for_ms(1_000)
-
-# pos = [0.04, 0.04, 0.4]
-# contr.move_ee(pos)
-
-# contr.wait_for_ms(10_000)
-
-
+    loop()
 
