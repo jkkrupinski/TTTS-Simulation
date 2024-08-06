@@ -30,6 +30,7 @@ class Controller(MuJoCoBase):
         self._init_second_window()
 
         self.num_of_accuators = len(self.data.ctrl)
+        self.init_qpos = [0, -.247, 0, .909, 0, 1.15644, 0]
 
         self._init_kinematic_chain()
 
@@ -229,7 +230,7 @@ class Controller(MuJoCoBase):
         """
 
         orientation_axis = "Z"
-        target_orientation = [0, 0, -1]
+        target_orientation = [0.0, 0, -0.9]
 
         ee_position_base = ee_position - self.model.body("link_base").pos
 
@@ -253,6 +254,10 @@ class Controller(MuJoCoBase):
         print("Failed to find IK solution.")
         return None
 
+    def reset(self): 
+        self.data.qpos[:] = self.init_qpos 
+        self.data.qvel[:] = np.zeros((7,))
+        
     def render(self):
         self.render_main()
         self.render_secondary()
@@ -426,29 +431,6 @@ class Controller(MuJoCoBase):
                 )
             )
 
-    def get_image_data(self, show=False, camera="top_down", width=200, height=200):
-        """
-        Returns the RGB and depth images of the provided camera.
-
-        Args:
-            show: If True displays the images for five seconds or until a key is pressed.
-            camera: String specifying the name of the camera to use.
-        """
-
-        rgb, depth = copy.deepcopy(
-            self.sim.render(width=width, height=height, camera_name=camera, depth=True)
-        )
-        if show:
-            cv.imshow("rbg", cv.cvtColor(rgb, cv.COLOR_BGR2RGB))
-            # cv.imshow('depth', depth)
-            cv.waitKey(1)
-            # cv.waitKey(delay=5000)
-            # cv.destroyAllWindows()
-
-        return np.array(np.fliplr(np.flipud(rgb))), np.array(
-            np.fliplr(np.flipud(depth))
-        )
-
     def create_camera_data(self, width, height, camera):
         """
         Initializes all camera parameters that only need to be calculated once.
@@ -552,4 +534,3 @@ if __name__ == "__main__":
     contr.wait_for_ms(1_000)
 
     loop()
-
