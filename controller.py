@@ -30,7 +30,7 @@ class Controller(MuJoCoBase):
         self._init_second_window()
 
         self.num_of_accuators = len(self.data.ctrl)
-        self.init_qpos = [0, -.247, 0, .909, 0, 1.15644, 0]
+        self.init_qpos = [0, -0.247, 0, 0.909, 0, 1.15644, 0]
 
         self._init_kinematic_chain()
 
@@ -110,7 +110,8 @@ class Controller(MuJoCoBase):
         )
 
         reshaped_array = pixels_buffer.reshape(self.render_dims, self.render_dims, 3)
-        gray_array = cv.cvtColor(reshaped_array, cv.COLOR_RGB2GRAY)
+        rotated_array = cv.rotate(reshaped_array, 0)
+        gray_array = cv.cvtColor(rotated_array, cv.COLOR_RGB2GRAY)
         return gray_array
 
     def get_ee_pos(self):
@@ -150,8 +151,6 @@ class Controller(MuJoCoBase):
         while not self.reached_target:
             current_joint_values = self.data.qpos
 
-            # self.get_image_data(width=200, height=200, show=True)
-
             for j in range(self.num_of_accuators):
                 self.data.ctrl[j] = self.current_target_joint_values[j]
 
@@ -188,7 +187,7 @@ class Controller(MuJoCoBase):
             ee_position: List of XYZ-coordinates of the end-effector (ee_link for UR5 setup).
         """
 
-        self.model.body("sphere").pos = ee_position
+        self.model.body("sphere").pos = ee_position - [0, 0, 0.3]
 
         joint_angles = self.ik(ee_position)
         if joint_angles is not None:
@@ -219,7 +218,7 @@ class Controller(MuJoCoBase):
     def ik(self, ee_position):
         """
         Method for solving simple inverse kinematic problems.
-        This was developed for top down graspig, therefore the solution will be one where the gripper is
+        This was developed for top down grasping, therefore the solution will be one where the gripper is
         vertical. This might need adjustment for other gripper models.
 
         Args:
@@ -229,8 +228,11 @@ class Controller(MuJoCoBase):
             joint_angles: List of joint angles that will achieve the desired ee position.
         """
 
-        orientation_axis = "Z"
-        target_orientation = [0.0, 0, -0.9]
+        # orientation_axis = "Z"
+        # target_orientation = [0.0, 0.0, -1]
+
+        orientation_axis = "all"
+        target_orientation = -np.array([[-1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
         ee_position_base = ee_position - self.model.body("link_base").pos
 
@@ -240,13 +242,29 @@ class Controller(MuJoCoBase):
             orientation_mode=orientation_axis,
         )
 
+        # position = self.ee_chain.forward_kinematics(joint_angles)[:3, 3]
+        # orientation = self.ee_chain.forward_kinematics(joint_angles)[:3, :3]
+
+        # print(
+        #     "Requested position: {} vs Reached position: {}".format(
+        #         np.round(ee_position_base, 3), np.round(position, 3)
+        #     )
+        # )
+        # print("Requested orientation on the X axis: {} vs Reached orientation on the X axis: {}".format(target_orientation, np.round(orientation,2)))
+        # print()
+
         prediction = (
             self.ee_chain.forward_kinematics(joint_angles)[:3, 3]
             + self.model.body("link_base").pos
         )
 
+        # print("pred",np.round(prediction,2))
+
         diff = abs(prediction - ee_position)
+        # print("diff",diff)
         error = np.sqrt(diff.dot(diff))
+        # print(error)
+
 
         if error <= 0.4:
             return joint_angles
@@ -254,10 +272,10 @@ class Controller(MuJoCoBase):
         print("Failed to find IK solution.")
         return None
 
-    def reset(self): 
-        self.data.qpos[:] = self.init_qpos 
+    def reset(self):
+        self.data.qpos[:] = self.init_qpos
         self.data.qvel[:] = np.zeros((7,))
-        
+
     def render(self):
         self.render_main()
         self.render_secondary()
