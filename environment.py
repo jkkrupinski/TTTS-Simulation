@@ -46,7 +46,6 @@ class Environment(MujocoEnv, utils.EzPickle):
         self.step_counter = 0
         self.render_mode = render_mode
 
-
         self.placenta_areas = 30 - 1
 
         # viewport_width = 256
@@ -71,7 +70,6 @@ class Environment(MujocoEnv, utils.EzPickle):
             observation_space=self.observation_space,
             render_mode=render_mode,
         )
-
 
     def _set_action_space(self):
         self.action_space = spaces.Discrete(len(cam.Actions))
@@ -120,18 +118,19 @@ class Environment(MujocoEnv, utils.EzPickle):
         info = {}
 
         if self.render_mode == "human":
-            print(
-                cam.Actions(action),
-                reward,
-            )
-            print()
+            # print(
+            #     cam.Actions(action),
+            #     reward,
+            # )
+            # print(self.camera.map.T)
+            # print()
+            
             self.render()
 
         return observations, reward, terminated, truncated, info
 
     def render(self):
         self.camera.render()
-        print(self.camera.map)
 
 
 if __name__ == "__main__":
@@ -143,6 +142,14 @@ if __name__ == "__main__":
 
     observations = env.reset()[0]
 
+    # a = [0,2,1,3,3,0,0,2,2,1]
+
     for i in range(10):
         rand_action = env.action_space.sample()
         observations, reward, terminated, _, _ = env.step(rand_action)
+
+
+    UP = 0
+    DOWN = 1
+    LEFT = 2
+    RIGHT = 3
