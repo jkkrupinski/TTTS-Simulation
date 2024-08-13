@@ -4,6 +4,7 @@ import random
 import numpy as np
 from matplotlib import pyplot as plt
 from controller import Controller
+import cv2
 
 WHITE = 255
 
@@ -41,10 +42,6 @@ class Agent:
 
         self.reset(seed)
 
-        plt.ion()
-        self.fig = plt.figure()
-        self.axes_img = plt.imshow(np.swapaxes(self.map_image, 1, 0))
-
     def _init_map(self):
         self.map_width_idx = 15
         self.map_height_idx = 11
@@ -74,13 +71,14 @@ class Agent:
             random.randint(0, self.placenta.width_idx - offset) * self.step,
             random.randint(0, self.placenta.height_idx - offset) * self.step,
         ]
-       
+
         self.placenta_start_position = [
             int(self.placenta.width_idx * self.step / 2),
             int(self.placenta.height_idx * self.step / 2),
         ]
         self.placenta_position = self.placenta_start_position
 
+        self.robot_ee_pos = self.controller.get_ee_pos()
 
     def get_viewport(self):
         viewport = self.controller.get_feto_image()
@@ -114,10 +112,11 @@ class Agent:
                 if observation[x_cam, y_cam] == WHITE:
                     filled = True
 
-                    if self.render_mode:
+                    if self.render_mode == "human":
                         self.map_image[x_map, y_map] = WHITE
                     else:
                         return filled
+
         return filled
 
     def get_observation(self):
@@ -135,8 +134,7 @@ class Agent:
             self.map[map_indexes] = FILLED + self.agent_id
             return False
 
-        if self.is_within_placenta():
-            filled = self.fill_map_image()
+        filled = self.fill_map_image()
 
         if filled:
             self.map[map_indexes] = FILLED + self.agent_id
@@ -154,6 +152,8 @@ class Agent:
         self.seen_areas = 0
         self.update_map()
 
+        cv2.destroyAllWindows()
+
         self.controller.reset()
 
     def is_x_in_map(self, x) -> bool:
@@ -169,53 +169,46 @@ class Agent:
     def been_there(self, map_indexes):
         return self.map[map_indexes] == FILLED
 
-    def is_within_placenta(self) -> bool:
-        is_within_x = (
-            self.placenta_position[0] >= 0
-            and self.placenta_position[0] <= (7 - 1) * 256
-        )
-        is_within_y = (
-            self.placenta_position[1] >= 0
-            and self.placenta_position[1] <= (5 - 1) * 256
-        )
-        return is_within_x and is_within_y
-
     def perform_action(self, action: Actions) -> bool:
         action_succes = False
         discovered_new_area = False
 
         previous_map_indexes = self.get_map_indexes()
-        robot_ee_pos = self.controller.get_ee_pos()
+        # print(np.round(self.robot_ee_pos,2))
 
         if action == Actions.LEFT:
             if self.is_x_in_map(self.map_position[0] - self.step):
                 self.map_position[0] -= self.step
                 self.placenta_position[0] -= self.step
-                self.controller.move_ee(robot_ee_pos - [self.robot_step, 0, 0])
+                self.robot_ee_pos += [0, self.robot_step, 0]
+                self.controller.move_ee(self.robot_ee_pos)
                 action_succes = True
 
         elif action == Actions.RIGHT:
             if self.is_x_in_map(self.map_position[0] + self.step):
                 self.map_position[0] += self.step
                 self.placenta_position[0] += self.step
-                self.controller.move_ee(robot_ee_pos + [self.robot_step, 0, 0])
+                self.robot_ee_pos -= [0, self.robot_step, 0]
+                self.controller.move_ee(self.robot_ee_pos)
                 action_succes = True
 
         elif action == Actions.UP:
             if self.is_y_in_map(self.map_position[1] - self.step):
                 self.map_position[1] -= self.step
                 self.placenta_position[1] -= self.step
-                self.controller.move_ee(robot_ee_pos - [0, self.robot_step, 0])
+                self.robot_ee_pos += [self.robot_step, 0, 0]
+                self.controller.move_ee(self.robot_ee_pos)
                 action_succes = True
 
         elif action == Actions.DOWN:
             if self.is_y_in_map(self.map_position[1] + self.step):
                 self.map_position[1] += self.step
                 self.placenta_position[1] += self.step
-                self.controller.move_ee(robot_ee_pos + [0, self.robot_step, 0])
+                self.robot_ee_pos -= [self.robot_step, 0, 0]
+                self.controller.move_ee(self.robot_ee_pos)
                 action_succes = True
 
-        self.controller.wait_for_ms(1000)
+        self.controller.wait_for_ms(2000)
 
         if action_succes:
             self.map[previous_map_indexes] -= self.agent_id
@@ -224,11 +217,29 @@ class Agent:
         return action_succes, discovered_new_area
 
     def render(self):
-        swapped_map_image = np.swapaxes(self.map_image, 1, 0)
-        self.draw_mark(swapped_map_image)
 
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+        if self.map_image.dtype != np.uint8:
+            raise ValueError("Image data type must be uint8")
+
+        # Check the value range
+        if self.map_image.min() < 0 or self.map_image.max() > 255:
+            raise ValueError("Image values must be in the range [0, 255]")
+
+        original_height, original_width = self.map_image.shape[:2]
+
+        # Calculate new dimensions (3x smaller)
+        new_width = original_width // 3
+        new_height = original_height // 3
+
+        # Resize the image
+        resized_image = cv2.resize(
+            self.map_image, (new_width, new_height), interpolation=cv2.INTER_AREA
+        )
+        transposed_image = np.transpose(resized_image, (1, 0))  # Swap x and y axes
+
+        cv2.imshow("Map", transposed_image)
+        cv2.moveWindow('Map', 2000, 0)  
+        cv2.waitKey(1)
 
     def draw_mark(self, swapped_map_image):
         mark_size = 50
