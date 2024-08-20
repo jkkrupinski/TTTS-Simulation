@@ -7,6 +7,7 @@ from controller import Controller
 import cv2
 
 WHITE = 255
+BLACK = 0
 
 UNDISCOVERED = 0
 FILLED = 1
@@ -38,7 +39,9 @@ class Agent:
         self.viewport_width = 256
         self.viewport_height = 256
 
-        self.robot_step = 0.05
+        self.robot_step = 0.04
+
+        self.proportion = self.step / self.robot_step
 
         self.reset(seed)
 
@@ -93,13 +96,12 @@ class Agent:
     def cam2map(self, x_cam, y_cam):
         x_placenta = x_cam + self.placenta_position[0]
         y_placenta = y_cam + self.placenta_position[1]
-
         t_x, t_y = self.map2placenta()
 
         x_map = x_placenta + t_x
         y_map = y_placenta + t_y
 
-        return x_map, y_map
+        return int(x_map), int(y_map)
 
     def fill_map_image(self):
         observation = self.get_viewport()
@@ -119,6 +121,29 @@ class Agent:
 
         return filled
 
+    def fill_map_image2(self):
+        observation = self.get_viewport()
+        filled = False
+
+        for x_cam in range(observation.shape[0]):
+            for y_cam in range(observation.shape[1]):
+                # self.controller.get_ee_pos()[:2]
+                x_map, y_map = self.cam2map(x_cam, y_cam)
+
+                if observation[x_cam, y_cam] == WHITE:
+                    filled = True
+
+                    if self.render_mode == "human":
+                        self.map_image[x_map, y_map] = WHITE
+                    else:
+                        return filled
+
+                elif observation[x_cam, y_cam] == BLACK:
+                    if self.render_mode == "human":
+                        self.map_image[x_map, y_map] = BLACK
+
+        return filled
+
     def get_observation(self):
         return self.map.flatten()
 
@@ -135,6 +160,25 @@ class Agent:
             return False
 
         filled = self.fill_map_image()
+
+        if filled:
+            self.map[map_indexes] = FILLED + self.agent_id
+            self.seen_areas += 1
+            return True
+        else:
+            self.map[map_indexes] = EMPTY + self.agent_id
+            return False
+
+    def update_map2(self):
+        filled = False
+
+        map_indexes = self.get_map_indexes()
+
+        filled = self.fill_map_image2()
+
+        if self.been_there(map_indexes):
+            self.map[map_indexes] = FILLED + self.agent_id
+            return False
 
         if filled:
             self.map[map_indexes] = FILLED + self.agent_id
@@ -174,7 +218,8 @@ class Agent:
         discovered_new_area = False
 
         previous_map_indexes = self.get_map_indexes()
-        # print(np.round(self.robot_ee_pos,2))
+
+        # a = self.controller.get_ee_pos()[:2]
 
         if action == Actions.LEFT:
             if self.is_x_in_map(self.map_position[0] - self.step):
@@ -210,6 +255,11 @@ class Agent:
 
         self.controller.wait_for_ms(2000)
 
+        # b = self.controller.get_ee_pos()[:2]
+        # vec = b - a
+        # self.placenta_position += vec
+        # print("moved vec: ", np.round((b - a) , 3))
+
         if action_succes:
             self.map[previous_map_indexes] -= self.agent_id
             discovered_new_area = self.update_map()
@@ -228,8 +278,8 @@ class Agent:
         original_height, original_width = self.map_image.shape[:2]
 
         # Calculate new dimensions (3x smaller)
-        new_width = original_width // 3
-        new_height = original_height // 3
+        new_width = original_width // 6
+        new_height = original_height // 6
 
         # Resize the image
         resized_image = cv2.resize(
@@ -238,7 +288,7 @@ class Agent:
         transposed_image = np.transpose(resized_image, (1, 0))  # Swap x and y axes
 
         cv2.imshow("Map", transposed_image)
-        cv2.moveWindow('Map', 2000, 0)  
+        cv2.moveWindow("Map", 1200, 600)
         cv2.waitKey(1)
 
     def draw_mark(self, swapped_map_image):
