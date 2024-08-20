@@ -1,25 +1,20 @@
+import os
+import random
+import numpy as np
+
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.envs.registration import register
 from gymnasium.utils.env_checker import check_env
-from PIL import Image
 from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
-from gymnasium.spaces import Box
-import os
 
-# import torch
-
-import agent as cam
-import random
-import numpy as np
+from agent import Agent, Actions
 
 register(
     id="camera-v3",
     entry_point="environment:Environment",
 )
-
-WHITE = 255
 
 
 class Environment(MujocoEnv, utils.EzPickle):
@@ -34,28 +29,40 @@ class Environment(MujocoEnv, utils.EzPickle):
 
     def __init__(self, render_mode=None):
 
+        xml_path = "scene/main.xml"
+        self.render_mode = render_mode
+
+        self._init_rewards_info()
+        self._init_agent()
+
+        self._set_observation_space()
+
         utils.EzPickle.__init__(self)
 
+        MujocoEnv.__init__(
+            self,
+            os.path.abspath(xml_path),
+            1,
+            observation_space=self.observation_space,
+            render_mode=self.render_mode,
+        )
+
+    def _init_rewards_info(self):
         self.final_reward = 40
         self.discovery_reward = 5
         self.termination_penalty = 19
         self.time_penalty = 1
 
         self.step_limit = 60
-
         self.step_counter = 0
-        self.render_mode = render_mode
 
         self.placenta_areas = 30 - 1
 
-        # viewport_width = 256
-        # viewport_height = 256
-        # step_size = 256
-
+    def _init_agent(self):
         seed = random.randint(0, 100)
+        self.agent = Agent(seed, self.render_mode)
 
-        self.camera = cam.Agent(seed, render_mode)
-
+    def _set_observation_space(self):
         self.observation_space = spaces.Box(
             low=0,
             high=32,
@@ -63,24 +70,16 @@ class Environment(MujocoEnv, utils.EzPickle):
             dtype=np.uint8,
         )
 
-        MujocoEnv.__init__(
-            self,
-            os.path.abspath("scene/main.xml"),
-            1,
-            observation_space=self.observation_space,
-            render_mode=render_mode,
-        )
-
     def _set_action_space(self):
-        self.action_space = spaces.Discrete(len(cam.Actions))
+        self.action_space = spaces.Discrete(len(Actions))
         return self.action_space
 
     def reset_model(self, seed=None, options=None):
 
-        self.camera.reset(seed)
+        self.agent.reset(seed)
         self.step_counter = 0
 
-        observations = self.camera.get_observation()
+        observations = self.agent.get_observation()
 
         if self.render_mode == "human":
             print("Seed: ", seed)
@@ -89,9 +88,7 @@ class Environment(MujocoEnv, utils.EzPickle):
         return observations
 
     def step(self, action):
-        action_succes, discovered_new_area = self.camera.perform_action(
-            cam.Actions(action)
-        )
+        action_succes, discovered_new_area = self.agent.perform_action(Actions(action))
         self.step_counter += 1
 
         reward = 0
@@ -110,27 +107,25 @@ class Environment(MujocoEnv, utils.EzPickle):
             reward -= self.termination_penalty
             terminated = True
 
-        elif self.camera.seen_areas == self.placenta_areas:
+        elif self.agent.seen_areas == self.placenta_areas:
             reward += self.final_reward
             terminated = True
 
-        observations = self.camera.get_observation()
+        observations = self.agent.get_observation()
         info = {}
 
         if self.render_mode == "human":
-            # print(
-            #     cam.Actions(action),
-            #     reward,
-            # )
-            # print(self.camera.map.T)
-            # print()
-            
+            print(
+                Actions(action),
+                reward,
+            )
             self.render()
 
         return observations, reward, terminated, truncated, info
 
     def render(self):
-        self.camera.render()
+        print(self.agent.map.T, "\n")
+        self.agent.render()
 
 
 if __name__ == "__main__":
@@ -142,14 +137,6 @@ if __name__ == "__main__":
 
     observations = env.reset()[0]
 
-    # a = [0,2,1,3,3,0,0,2,2,1]
-
     for i in range(10):
         rand_action = env.action_space.sample()
         observations, reward, terminated, _, _ = env.step(rand_action)
-
-
-    UP = 0
-    DOWN = 1
-    LEFT = 2
-    RIGHT = 3
