@@ -124,7 +124,7 @@ class Controller(MuJoCoBase):
     def move_joints(
         self,
         target,
-        tolerance=0.05,
+        tolerance=0.02,
         max_steps=10000,
         render=True,
     ):
@@ -187,7 +187,7 @@ class Controller(MuJoCoBase):
             ee_position: List of XYZ-coordinates of the end-effector (ee_link for UR5 setup).
         """
 
-        self.model.body("sphere").pos = ee_position - [0, 0, 0.3]
+        self.model.body("sphere").pos = ee_position - np.array([0, 0, 0.15])
 
         joint_angles = self.ik(ee_position)
         if joint_angles is not None:
@@ -257,16 +257,16 @@ class Controller(MuJoCoBase):
             self.ee_chain.forward_kinematics(joint_angles)[:3, 3]
             + self.model.body("link_base").pos
         )
-
         # print("pred",np.round(prediction,2))
 
         diff = abs(prediction - ee_position)
         # print("diff",diff)
+
         error = np.sqrt(diff.dot(diff))
-        # print(error)
+        # print("error: ",error)
 
 
-        if error <= 0.4:
+        if error <= 0.3:
             return joint_angles
 
         print("Failed to find IK solution.")
@@ -540,15 +540,15 @@ def loop():
         y = center_y + radius * np.sin(theta)
         pos = [x, y, 0.4]
         contr.move_ee(pos)
-        # contr.wait_for_ms(1_000)
+        contr.wait_for_ms(1_000)
 
 
 if __name__ == "__main__":
     contr = Controller()
 
-    pos = [0.0, 0.0, 0.4]
+    pos = [0.0, 0.0, 0.6]
     contr.move_ee(pos)
     contr.save_feto_image(with_mask=False)
-    contr.wait_for_ms(1_000)
+    contr.wait_for_ms(5_000)
 
     loop()
