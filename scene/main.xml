@@ -1,15 +1,11 @@
 <mujoco model="main">
 
-
   <compiler angle="radian" autolimits="true" strippath="false" />
-
 
   <!-- <include file="placenta/placenta.xml"/> -->
   <include file="placenta/placenta_seg.xml"/>
 
-
   <include file="ufactory_xarm7/xarm7_tool.xml"/>
-
 
   <asset>
     <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
@@ -18,11 +14,8 @@
     <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.0"/>
   </asset>
 
-
   <worldbody>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
-
-
     <body name="sphere" pos="0 0 0">
       <inertial pos="0 0 0" mass="0.1" diaginertia="0.0001 0.0001 0.0001"/>
       <geom type="sphere" size="0.01" rgba="1 0 0 1" contype="0" conaffinity="0"/>
