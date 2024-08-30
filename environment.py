@@ -83,48 +83,48 @@ class Environment(MujocoEnv, utils.EzPickle):
 
         if self.render_mode == "human":
             print("Seed: ", seed)
-            self.render()
 
         return observations
 
     def step(self, action):
-        action_succes, discovered_new_area = self.agent.perform_action(Actions(action))
+        action_success, discovered_new_area = self.agent.perform_action(Actions(action))
         self.step_counter += 1
 
-        reward = 0
-
-        if discovered_new_area:
-            reward += self.discovery_reward
-
-        reward -= self.time_penalty
-
-        truncated = False
-        if self.step_counter > self.step_limit:
-            truncated = True
-
-        terminated = False
-        if not action_succes:
-            reward -= self.termination_penalty
-            terminated = True
-
-        elif self.agent.seen_areas == self.placenta_areas:
-            reward += self.final_reward
-            terminated = True
+        reward = self.calculate_reward(action_success, discovered_new_area)
+        terminated, truncated = self.check_termination_conditions(action_success)
 
         observations = self.agent.get_observation()
         info = {}
 
         if self.render_mode == "human":
-            print(
-                Actions(action),
-                reward,
-            )
             self.render()
 
         return observations, reward, terminated, truncated, info
 
+    def calculate_reward(self, action_success, discovered_new_area):
+        reward = 0
+        if discovered_new_area:
+            reward += self.discovery_reward
+
+        reward -= self.time_penalty
+
+        if not action_success:
+            reward -= self.termination_penalty
+        elif self.agent.map.seen_areas == self.placenta_areas:
+            reward += self.final_reward
+
+        return reward
+
+    def check_termination_conditions(self, action_success):
+        terminated = False
+        truncated = self.step_counter > self.step_limit
+
+        if not action_success or self.agent.map.seen_areas == self.placenta_areas:
+            terminated = True
+
+        return terminated, truncated
+
     def render(self):
-        print(self.agent.map.T, "\n")
         self.agent.render()
 
 
@@ -139,4 +139,8 @@ if __name__ == "__main__":
 
     for i in range(10):
         rand_action = env.action_space.sample()
-        observations, reward, terminated, _, _ = env.step(rand_action)
+        observations, reward, terminated, truncated, info = env.step(rand_action)
+        print(
+            Actions(rand_action),
+            reward,
+        )
