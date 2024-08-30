@@ -67,6 +67,10 @@ class Map:
 
     def update(self, viewport):
 
+        if self.after_reset():
+            self.grid[tuple(self.position)] += self.agent_id
+            return False
+
         if self.was_here():
             self.update_position()
             return False
@@ -88,10 +92,7 @@ class Map:
         else:
             self.grid[tuple(self.position)] = EMPTY + self.agent_id
 
-        # After reset positions are the same
-        if tuple(self.position) != tuple(self.last_position):
-            self.grid[tuple(self.last_position)] -= self.agent_id
-
+        self.grid[tuple(self.last_position)] -= self.agent_id
         self.last_position = deepcopy(self.position)
 
     def get_position_px(self):
@@ -116,6 +117,9 @@ class Map:
 
     def was_here(self):
         return self.grid[tuple(self.position)] == FILLED
+    
+    def after_reset(self):
+        return tuple(self.position) == tuple(self.last_position)
 
     def render(self):
         original_height, original_width = self.image.shape[:2]
