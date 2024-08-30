@@ -17,10 +17,12 @@ class Controller(MuJoCoBase):
     to perform tasks on an already instantiated simulation.
     """
 
-    def __init__(self):
+    def __init__(self, render_mode):
 
         xml_path = "scene/main.xml"
         super().__init__(xml_path)
+
+        self.render_mode = render_mode
 
         self._init_main_cam()
         self._init_feto_cam()
@@ -82,7 +84,7 @@ class Controller(MuJoCoBase):
         )
 
     def _init_robot_info(self):
-        self.init_qpos = [0, -0.247, 0, 0.909, 0, 1.15644, 0]
+        self.init_qpos = [0, -0.247, 0, 0.909, 0, 1.15644, 0]  # values from urdf file
         self.num_of_accuators = len(self.data.ctrl)
         self.current_target_joint_values = np.zeros(self.num_of_accuators)
         self.base_pos = self.model.body("link_base").pos
@@ -99,7 +101,6 @@ class Controller(MuJoCoBase):
         target,
         tolerance=0.02,
         max_steps=10000,
-        render=True,
     ):
         """
         Moves the specified joint group to a joint target.
@@ -125,10 +126,9 @@ class Controller(MuJoCoBase):
         while not self.reached_target:
             current_joint_values = self.data.qpos
 
-            for j in range(self.num_of_accuators):
-                self.data.ctrl[j] = self.current_target_joint_values[j]
-
             for i in range(self.num_of_accuators):
+                self.data.ctrl[i] = self.current_target_joint_values[i]
+                
                 deltas[i] = abs(
                     self.current_target_joint_values[i] - current_joint_values[i]
                 )
@@ -145,14 +145,14 @@ class Controller(MuJoCoBase):
             mj.mj_step(self.model, self.data)
             steps += 1
 
-            if render:
+            if self.render_mode == "human":
                 self.render()
 
         self.last_movement_steps = steps
 
         return result
 
-    def move_ee(self, ee_position, render=True):
+    def move_ee(self, ee_position):
         """
         Moves the robot arm so that the gripper center ends up at the requested XYZ-position,
         with a vertical gripper position.
@@ -166,14 +166,14 @@ class Controller(MuJoCoBase):
 
         joint_angles = self.inverse_kinematic(ee_position)
         if joint_angles is not None:
-            result = self.move_joints(target=joint_angles, render=render)
+            result = self.move_joints(target=joint_angles)
         else:
             result = "No valid joint angles received, could not move EE to position."
             self.last_movement_steps = 0
 
         return result
 
-    def wait_for_ms(self, duration, render=True):
+    def wait_for_ms(self, duration):
         """
         Holds the current position by actuating the joints towards their current target position.
 
@@ -185,7 +185,7 @@ class Controller(MuJoCoBase):
         elapsed = 0
         while elapsed < duration:
 
-            if render:
+            if self.render_mode == "human":
                 self.render()
 
             elapsed = (time.time() - starting_time) * 1000
