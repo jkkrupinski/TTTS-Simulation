@@ -7,7 +7,7 @@ from stable_baselines3 import PPO
 
 env = gym.make("camera-v3", render_mode="human")
 
-model = PPO.load("models/model_1176000_steps")
+model = PPO.load("models/model_1178000_steps")
 model.set_env(env)
 
 obs, info = env.reset()
