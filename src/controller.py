@@ -6,7 +6,7 @@ import cv2 as cv
 
 import ikpy.chain
 from mujoco.glfw import glfw
-from mujoco_base import MuJoCoBase
+from misc.mujoco_base import MuJoCoBase
 
 
 class Controller(MuJoCoBase):
@@ -345,7 +345,7 @@ if __name__ == "__main__":
             contr.move_ee(pos)
             contr.wait_for_ms(1_000)
 
-    contr = Controller()
+    contr = Controller(render_mode="human")
 
     pos = [0.0, 0.0, 0.6]
     contr.move_ee(pos)
