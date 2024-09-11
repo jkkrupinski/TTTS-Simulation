@@ -4,6 +4,7 @@ import cv2
 
 
 WHITE = 255
+WHITE_THREASHOLD = 100
 BLACK = 0
 
 UNDISCOVERED = 0
@@ -13,7 +14,7 @@ EMPTY = 2
 
 class Map:
 
-    def __init__(self, render_dims, render_mode):
+    def __init__(self, render_dims, render_mode, viewport_length):
 
         self.render_dims = render_dims
         self.render_mode = render_mode
@@ -21,6 +22,8 @@ class Map:
         self.reset()
 
         self.agent_id = 30
+
+        self.cm2px = render_dims / viewport_length
 
     def reset(self):
         self._init_grid()
@@ -49,30 +52,45 @@ class Map:
         self.position = np.array([self.width // 2, self.height // 2])
         self.last_position = deepcopy(self.position)
 
+        self.image_position = self.position * self.render_dims
+
     def fill_image(self, viewport):
         filled = False
 
         for x_cam, y_cam in np.ndindex(viewport.shape):
 
-            if viewport[x_cam, y_cam] == WHITE:
+            if viewport[x_cam, y_cam] >= WHITE_THREASHOLD:
                 filled = True
 
                 if self.render_mode == "human":
-                    x_map, y_map = self.cam_2_map(x_cam, y_cam)
+
+                    x_map = x_cam + self.image_position[0]
+                    y_map = y_cam + self.image_position[1]
+
                     self.image[x_map, y_map] = WHITE
                 else:
                     return filled
 
+            else:
+                if self.render_mode == "human":
+
+                    x_map = x_cam + self.image_position[0]
+                    y_map = y_cam + self.image_position[1]
+
+                    self.image[x_map, y_map] = BLACK
+
         return filled
 
-    def update(self, viewport):
+    def update(self, viewport, position_difference):
 
         if self.after_reset():
             self.grid[tuple(self.position)] += self.agent_id
             return False
 
+        self.update_image_position(position_difference)
+
         if self.was_here():
-            self.update_position()
+            self.update_grid_position()
             return False
 
         filled = self.fill_image(viewport)
@@ -80,7 +98,14 @@ class Map:
 
         return filled
 
-    def update_position(self):
+    def update_image_position(self, position_difference):
+        x = position_difference[0]
+        y = position_difference[1]
+        global_position_difference = np.array([-y, -x])
+
+        self.image_position += (global_position_difference * self.cm2px).astype(int)
+
+    def update_grid_position(self):
         self.grid[tuple(self.position)] += self.agent_id
         self.grid[tuple(self.last_position)] -= self.agent_id
         self.last_position = deepcopy(self.position)
@@ -117,91 +142,59 @@ class Map:
 
     def was_here(self):
         return self.grid[tuple(self.position)] == FILLED
-    
+
     def after_reset(self):
         return tuple(self.position) == tuple(self.last_position)
 
     def render(self):
+
+        scale = 6
+
         original_height, original_width = self.image.shape[:2]
 
-        new_width = original_width // 6
-        new_height = original_height // 6
+        new_width = original_width // scale
+        new_height = original_height // scale
+
+        self.render_map(new_width, new_height)
+        self.render_grid(new_width, new_height)
+
+    def render_map(self, new_width, new_height):
+        image = self.add_marker(self.image)
 
         resized_image = cv2.resize(
-            self.image, (new_width, new_height), interpolation=cv2.INTER_AREA
+            image, (new_width, new_height), interpolation=cv2.INTER_AREA
         )
 
-        # image = self.add_marker(resized_image)
-        transposed_image = np.transpose(resized_image, (1, 0))  # Swap x and y axes
+        transposed_image = np.transpose(resized_image, (1, 0))
 
         cv2.imshow("Map", transposed_image)
         cv2.moveWindow("Map", 1200, 600)
         cv2.waitKey(1)
 
-        print(self.grid.T, "\n")
+    def render_grid(self, new_width, new_height):
+        resized_grid = cv2.resize(
+            (self.grid + 10) * 4, (new_width, new_height), interpolation=cv2.INTER_AREA
+        )
 
+        transposed_grid = np.transpose(resized_grid, (1, 0))
 
-##############################################################
+        cv2.imshow("Grid", transposed_grid)
+        cv2.moveWindow("Grid", 1200, 0)
+        cv2.waitKey(1)
 
+        # print(self.grid.T, "\n")
 
-def fill_map_image2(self):
-    observation = self.get_viewport()
-    filled = False
+    def add_marker(self, image):
 
-    for x_cam in range(observation.shape[0]):
-        for y_cam in range(observation.shape[1]):
-            x_map, y_map = self.cam2map(x_cam, y_cam)
+        image = cv2.rectangle(
+            image,
+            (self.image_position[1], self.image_position[0]),
+            (
+                self.image_position[1] + self.render_dims,
+                self.image_position[0] + self.render_dims,
+            ),
+            color=100,
+            thickness=6,
+        )
 
-            if observation[x_cam, y_cam] == WHITE:
-                filled = True
-
-                if self.render_mode == "human":
-                    self.map_image[x_map, y_map] = WHITE
-                else:
-                    return filled
-
-            elif observation[x_cam, y_cam] == BLACK:
-                if self.render_mode == "human":
-                    self.map_image[x_map, y_map] = BLACK
-
-    return filled
-
-
-def update_map2(self):
-    filled = False
-
-    map_indexes = self.get_map_indexes()
-
-    filled = self.fill_map_image2()
-
-    if self.been_there(map_indexes):
-        self.map[map_indexes] = FILLED + self.agent_id
-        return False
-
-    if filled:
-        self.map[map_indexes] = FILLED + self.agent_id
-        self.seen_areas += 1
-        return True
-    else:
-        self.map[map_indexes] = EMPTY + self.agent_id
-        return False
-
-
-def add_marker(self, image, marker_size=60, color=100):
-
-    x, y = self.map.get_position_px()
-
-    # Calculate the top-left corner of the marker
-    half_marker_size = marker_size // 2
-    marker_top_left_x = x - half_marker_size
-    marker_top_left_y = y - half_marker_size
-
-    image = cv2.rectangle(
-        image,
-        (marker_top_left_x, marker_top_left_y),
-        (marker_top_left_x + marker_size, marker_top_left_y + marker_size),
-        color,
-        -1,
-    )
-
-    return image
+        return image

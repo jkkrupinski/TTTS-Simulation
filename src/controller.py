@@ -49,6 +49,8 @@ class Controller(MuJoCoBase):
         camera_name = "eye"
         camera_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_CAMERA, camera_name)
 
+        self.feto_fovy = self.model.camera("eye").fovy
+
         self.feto_cam.type = mj.mjtCamera.mjCAMERA_FIXED
         self.feto_cam.fixedcamid = camera_id
 
@@ -58,7 +60,7 @@ class Controller(MuJoCoBase):
             self.render_dims, self.render_dims, "Fetoscope View", None, None
         )
 
-        glfw.set_window_pos(self.second_window, 1400, 200)
+        glfw.set_window_pos(self.second_window, 20, 200)
 
         if not self.second_window:
             glfw.terminate()
@@ -99,7 +101,7 @@ class Controller(MuJoCoBase):
     def move_joints(
         self,
         target,
-        tolerance=0.02,
+        tolerance=0.012,
         max_steps=10000,
     ):
         """
@@ -128,7 +130,7 @@ class Controller(MuJoCoBase):
 
             for i in range(self.num_of_accuators):
                 self.data.ctrl[i] = self.current_target_joint_values[i]
-                
+
                 deltas[i] = abs(
                     self.current_target_joint_values[i] - current_joint_values[i]
                 )
@@ -162,7 +164,7 @@ class Controller(MuJoCoBase):
         """
 
         # move marker where the ee should be
-        self.model.body("sphere").pos = ee_position - np.array([0, 0, 0.15])
+        self.model.body("sphere").pos = ee_position - np.array([0, 0, 0.30])
 
         joint_angles = self.inverse_kinematic(ee_position)
         if joint_angles is not None:

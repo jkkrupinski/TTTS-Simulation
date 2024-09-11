@@ -1,6 +1,8 @@
 import os
 import random
 import numpy as np
+import curses
+
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -128,7 +130,7 @@ class Environment(MujocoEnv, utils.EzPickle):
         self.agent.render()
 
 
-if __name__ == "__main__":
+def main(stdscr):
     env = gym.make("camera-v3", render_mode="human")
 
     # print("Check environment begin")
@@ -137,10 +139,38 @@ if __name__ == "__main__":
 
     observations = env.reset()[0]
 
-    for i in range(10):
-        rand_action = env.action_space.sample()
-        observations, reward, terminated, truncated, info = env.step(rand_action)
-        print(
-            Actions(rand_action),
-            reward,
-        )
+    run = True
+    action = 0
+
+    stdscr.addstr("Press the arrow keys to move or 'q' to quit.\n")
+    stdscr.refresh()
+
+    while run:
+
+        key = stdscr.getch()  # Wait for user input
+
+        if key == curses.KEY_UP:
+            action = 0
+        elif key == curses.KEY_DOWN:
+            action = 1
+        elif key == curses.KEY_LEFT:
+            action = 2
+        elif key == curses.KEY_RIGHT:
+            action = 3
+        elif key == ord("q"):
+            stdscr.addstr("Exiting...\n")
+            run = False
+            break
+
+        # rand_action = env.action_space.sample()
+        observations, reward, terminated, truncated, info = env.step(action)
+
+        # stdscr.addstr("Action: %s, Reward: %d \n" % (Actions(action), reward))
+        # print(
+        #     Actions(action),
+        #     reward,
+        # )
+
+
+if __name__ == "__main__":
+    curses.wrapper(main)
