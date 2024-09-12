@@ -1,8 +1,7 @@
 import gymnasium as gym
-import environment as environment
-import random
-
 from stable_baselines3 import PPO
+
+import environment
 
 
 env = gym.make("camera-v3", render_mode="human")
@@ -17,5 +16,4 @@ while True:
     obs, reward, terminated, truncated, info = env.step(action)
 
     if terminated or truncated:
-        seed = random.randint(0, 100)
-        obs, info = env.reset(seed=seed)
+        obs, info = env.reset()
