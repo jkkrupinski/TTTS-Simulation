@@ -102,7 +102,7 @@ class Controller(MuJoCoBase):
         self,
         target,
         tolerance=0.012,
-        max_steps=10000,
+        max_steps=1000,
     ):
         """
         Moves the specified joint group to a joint target.

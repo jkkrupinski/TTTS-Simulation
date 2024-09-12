@@ -1,49 +1,53 @@
-from enum import Enum
-import numpy as np
+from random import randint
 
+import numpy as np
 
 from controller import Controller
 from map import Map
-
-
-class Actions(Enum):
-    UP = 0
-    DOWN = 1
-    LEFT = 2
-    RIGHT = 3
+from misc.actions import Actions
 
 
 class Agent:
-    def __init__(self, seed, render_mode) -> None:
+    def __init__(self, render_mode) -> None:
 
         self.render_mode = render_mode
 
         self.controller = Controller(self.render_mode)
 
-        self.robot_step = 0.01
-        self.robot_height = 0.22
-        self.steps = 2
+        self.robot_step = 0.023
+        self.robot_height = 0.16
+        self.num_of_steps = 2
 
         fovy = self.controller.feto_fovy
+        fetoscope_length = 0.3
+        placenta_width = 0.01
+
         viewport_length = (
-            2 * (0.3 - self.robot_height - 0.01) * np.tan(np.deg2rad(fovy / 2))
+            2
+            * (fetoscope_length - self.robot_height - placenta_width)
+            * np.tan(np.deg2rad(fovy / 2))
         )
 
         self.map = Map(self.controller.render_dims, self.render_mode, viewport_length)
 
-        self.reset(seed)
+        self.reset()
 
-    def reset(self, seed):
-        self._init_start_position(seed)
+    def reset(self):
+
+        self._init_start_position()
 
         self.controller.reset()
 
         self.map.reset()
         self.map.update(self.get_viewport(), self.controller.get_ee_pos())
 
-    def _init_start_position(self, seed):
-        self.robot_ee_pos = self.controller.get_ee_pos()
-        self.robot_ee_pos -= [0, 0, self.robot_height]
+    def _init_start_position(self):
+        self.robot_ee_position = self.controller.get_ee_pos()
+
+        x_offset = randint(-2, 2) * self.robot_step
+        y_offset = randint(-2, 2) * self.robot_step
+
+        self.robot_ee_position -= [x_offset, y_offset, self.robot_height]
 
     def get_viewport(self):
         return self.controller.get_feto_image()
@@ -90,7 +94,7 @@ class Agent:
 
         position_difference = self.move_robot(movement_vector)
         discovered_new_area = self.update_map(position_difference)
-        self.controller.wait_for_ms(1000)
+        self.controller.wait_for_ms(500)
 
         # print("Moved by: ", np.round(vec, 3))
 
@@ -102,16 +106,16 @@ class Agent:
 
     def move_robot(self, movement_vector):
 
-        partial_vector = [x / self.steps for x in movement_vector]
+        partial_vector = [x / self.num_of_steps for x in movement_vector]
 
         begin_position = self.controller.get_ee_pos()
 
-        for _ in range(self.steps):
+        for _ in range(self.num_of_steps):
 
             # a = self.controller.get_ee_pos()
 
-            self.robot_ee_pos += partial_vector
-            self.controller.move_ee(self.robot_ee_pos)
+            self.robot_ee_position += partial_vector
+            self.controller.move_ee(self.robot_ee_position)
             self.controller.wait_for_ms(100)
 
             # b = self.controller.get_ee_pos()

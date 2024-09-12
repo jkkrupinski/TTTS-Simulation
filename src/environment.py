@@ -1,17 +1,15 @@
 import os
 import random
 import numpy as np
-import curses
-
 
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.envs.registration import register
-from gymnasium.utils.env_checker import check_env
 from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
 
 from agent import Agent, Actions
+
 
 register(
     id="camera-v3",
@@ -61,8 +59,7 @@ class Environment(MujocoEnv, utils.EzPickle):
         self.placenta_areas = 30 - 1
 
     def _init_agent(self):
-        seed = random.randint(0, 100)
-        self.agent = Agent(seed, self.render_mode)
+        self.agent = Agent(self.render_mode)
 
     def _set_observation_space(self):
         self.observation_space = spaces.Box(
@@ -76,9 +73,12 @@ class Environment(MujocoEnv, utils.EzPickle):
         self.action_space = spaces.Discrete(len(Actions))
         return self.action_space
 
-    def reset_model(self, seed=None, options=None):
+    def reset_model(self, options=None):
 
-        self.agent.reset(seed)
+        seed = random.randint(0, 100)
+        random.seed(seed)
+
+        self.agent.reset()
         self.step_counter = 0
 
         observations = self.agent.get_observation()
@@ -129,48 +129,3 @@ class Environment(MujocoEnv, utils.EzPickle):
     def render(self):
         self.agent.render()
 
-
-def main(stdscr):
-    env = gym.make("camera-v3", render_mode="human")
-
-    # print("Check environment begin")
-    # check_env(env.unwrapped)
-    # print("Check environment end")
-
-    observations = env.reset()[0]
-
-    run = True
-    action = 0
-
-    stdscr.addstr("Press the arrow keys to move or 'q' to quit.\n")
-    stdscr.refresh()
-
-    while run:
-
-        key = stdscr.getch()  # Wait for user input
-
-        if key == curses.KEY_UP:
-            action = 0
-        elif key == curses.KEY_DOWN:
-            action = 1
-        elif key == curses.KEY_LEFT:
-            action = 2
-        elif key == curses.KEY_RIGHT:
-            action = 3
-        elif key == ord("q"):
-            stdscr.addstr("Exiting...\n")
-            run = False
-            break
-
-        # rand_action = env.action_space.sample()
-        observations, reward, terminated, truncated, info = env.step(action)
-
-        # stdscr.addstr("Action: %s, Reward: %d \n" % (Actions(action), reward))
-        # print(
-        #     Actions(action),
-        #     reward,
-        # )
-
-
-if __name__ == "__main__":
-    curses.wrapper(main)

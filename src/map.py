@@ -129,9 +129,6 @@ class Map:
     def get_observation(self):
         return self.grid.flatten()
 
-    def cam_2_map(self, x_cam, y_cam):
-        return [x_cam, y_cam] + self.get_position_px()
-
     def is_position_outside(self, position) -> bool:
         x = position[0]
         y = position[1]
@@ -148,7 +145,7 @@ class Map:
 
     def render(self):
 
-        scale = 6
+        scale = 8
 
         original_height, original_width = self.image.shape[:2]
 
@@ -159,7 +156,9 @@ class Map:
         self.render_grid(new_width, new_height)
 
     def render_map(self, new_width, new_height):
-        image = self.add_marker(self.image)
+
+        image = deepcopy(self.image)
+        image = self.add_marker(image)
 
         resized_image = cv2.resize(
             image, (new_width, new_height), interpolation=cv2.INTER_AREA
