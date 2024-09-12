@@ -61,12 +61,12 @@ This project is a part of a Master Thesis. Main goal is to create a simulation f
 - To run environment with random actions run environment.py script
 
     ```sh
-    python environment.py
+    python tests/test_environment.py
     ```
 
 - To run a test of the trained model on the simulation environment run test.py script
 
     ```sh
-    python test_model.py
+    python tests/test_model.py
     ```
 
