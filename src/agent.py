@@ -16,7 +16,7 @@ class Agent:
 
         self.robot_step = 0.023
         self.robot_height = 0.16
-        self.num_of_steps = 2
+        self.num_of_steps = 1 # doesnt work wit rcm
 
         fovy = self.controller.feto_fovy
         fetoscope_length = 0.3
@@ -44,10 +44,10 @@ class Agent:
     def _init_start_position(self):
         self.robot_ee_position = self.controller.get_ee_pos()
 
-        x_offset = randint(-2, 2) * self.robot_step
-        y_offset = randint(-2, 2) * self.robot_step
+        # x_offset = randint(-2, 2) * self.robot_step
+        # y_offset = randint(-2, 2) * self.robot_step
 
-        self.robot_ee_position -= [x_offset, y_offset, self.robot_height]
+        self.robot_ee_position -= [0, 0, self.robot_height]
 
     def get_viewport(self):
         return self.controller.get_feto_image()
@@ -115,7 +115,7 @@ class Agent:
             # a = self.controller.get_ee_pos()
 
             self.robot_ee_position += partial_vector
-            self.controller.move_ee(self.robot_ee_position)
+            self.controller.move_ee(self.robot_ee_position, movement_vector)
             self.controller.wait_for_ms(100)
 
             # b = self.controller.get_ee_pos()
