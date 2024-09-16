@@ -254,7 +254,7 @@
         </inertial>
 
         <visual>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <origin xyz="0 0 -0.075" rpy="0 0 0"/>
             <geometry>
                 <cylinder radius="0.003" length="0.15"/>
             </geometry>
@@ -264,7 +264,7 @@
         </visual>
 
         <collision>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <origin xyz="0 0 -0.075" rpy="0 0 0"/>
             <geometry>
                 <cylinder radius="0.003" length="0.15"/>
             </geometry>
@@ -274,12 +274,16 @@
         </collision>
     </link>
 
-    <joint name="joint8" type="fixed">
-        <origin xyz="0 0 0" />
-        <parent link="tool" />
-        <child link="link7" />
+    <joint name="dummy_joint" type="revolute">
+        <origin xyz="0 0 0.3" />
+        <parent link="link7" />
+        <child link="tool" />
         <axis xyz="0 0 1" />
+        <limit lower="0" upper="0" effort="1000" velocity="0.001"/>
+        <dynamics damping="100" friction="100"/>
     </joint>
+
+   
 
 
 </robot>

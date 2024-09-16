@@ -80,6 +80,7 @@ class Controller(MuJoCoBase):
             True,
             True,
             True,
+            False,
         ]
         self.ee_chain = ikpy.chain.Chain.from_urdf_file(
             urdf_path, active_links_mask=active_links_mask
@@ -164,7 +165,7 @@ class Controller(MuJoCoBase):
         """
 
         # move marker where the ee should be
-        self.model.body("sphere").pos = ee_position - np.array([0, 0, 0.30])
+        self.model.body("sphere").pos = ee_position
 
         joint_angles = self.inverse_kinematic(ee_position)
         if joint_angles is not None:
@@ -192,6 +193,33 @@ class Controller(MuJoCoBase):
 
             elapsed = (time.time() - starting_time) * 1000
 
+    def tilt_tool_orientation(self, target_orientation, theta_x, theta_y):
+        """
+        Returns the new orientation matrix after tilting the tool in x and y axes.
+        
+        Parameters:
+        - target_orientation: The original 3x3 orientation matrix
+        - theta_x: Rotation angle around the x-axis in radians
+        - theta_y: Rotation angle around the y-axis in radians
+        
+        Returns:
+        - new_orientation: The new orientation matrix
+        """
+        # Rotation matrix around x-axis
+        R_x = np.array([[1, 0, 0],
+                        [0, np.cos(theta_x), -np.sin(theta_x)],
+                        [0, np.sin(theta_x), np.cos(theta_x)]])
+        
+        # Rotation matrix around y-axis
+        R_y = np.array([[np.cos(theta_y), 0, np.sin(theta_y)],
+                        [0, 1, 0],
+                        [-np.sin(theta_y), 0, np.cos(theta_y)]])
+        
+        # Apply rotations to the target orientation
+        new_orientation = target_orientation @ R_y @ R_x
+        
+        return new_orientation
+
     def inverse_kinematic(self, ee_position):
         """
         Method for solving simple inverse kinematic problems.
@@ -205,11 +233,15 @@ class Controller(MuJoCoBase):
             joint_angles: List of joint angles that will achieve the desired ee position.
         """
 
-        # orientation_axis = "Z"
-        # target_orientation = [0.0, 0.0, -1]
 
         orientation_axis = "all"
         target_orientation = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
+
+        # theta_x = np.radians(5)  # Tilt by 30 degrees in x-axis
+        # theta_y = np.radians(0)  # Tilt by 45 degrees in y-axis
+
+        # target_orientation = self.tilt_tool_orientation(target_orientation, theta_x, theta_y)
+                
 
         ee_position_base = ee_position - self.base_pos
 
@@ -250,9 +282,12 @@ class Controller(MuJoCoBase):
     def get_ee_pos(self):
         # ee_chain has an additional fixed joint compared to robot defined usng MuJoCo format
         extended_joints = np.append(0, self.data.qpos)
+        extended_joints = np.append(extended_joints,0)
+
         ee_pos = (
             self.ee_chain.forward_kinematics(extended_joints)[:3, 3] + self.base_pos
         )
+
         return ee_pos
 
     def get_feto_image(self):
