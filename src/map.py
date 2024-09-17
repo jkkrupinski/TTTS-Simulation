@@ -16,16 +16,25 @@ class Map:
 
     def __init__(self, render_dims, render_mode, viewport_length):
 
+        print("init map")
+
         self.render_dims = render_dims
         self.render_mode = render_mode
 
-        self.reset()
+        self._init_grid()
+        self._init_image()
+        self._init_position()
+
 
         self.agent_id = 30
+        self.seen_areas = 0
 
         self.cm2px = render_dims / viewport_length
 
     def reset(self):
+
+        print("reset map")
+
         self._init_grid()
         self._init_image()
         self._init_position()

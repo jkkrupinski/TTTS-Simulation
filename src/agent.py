@@ -12,42 +12,51 @@ class Agent:
 
         self.render_mode = render_mode
 
-        self.controller = Controller(self.render_mode)
+        print("init agent")
+
+        self.ee_height = 0.14
+        self.rcm_height = 0.28
+
+        self.controller = Controller(self.render_mode, self.rcm_height, self.ee_height)
 
         self.robot_step = 0.023
-        self.robot_height = 0.16
-        self.num_of_steps = 1 # doesnt work wit rcm
+        self.num_of_steps = 1 
 
         fovy = self.controller.feto_fovy
-        fetoscope_length = 0.3
+        self.fetoscope_length = 0.3  # wtf
         placenta_width = 0.01
 
-        viewport_length = (
-            2
-            * (fetoscope_length - self.robot_height - placenta_width)
-            * np.tan(np.deg2rad(fovy / 2))
+        height_from_placenta = (
+            self.fetoscope_length - self.ee_height - placenta_width
         )
+
+        viewport_length = 2 * height_from_placenta * np.tan(np.deg2rad(fovy / 2))
 
         self.map = Map(self.controller.render_dims, self.render_mode, viewport_length)
 
-        self.reset()
+        self._init_start_position()
+
+        self.map.update(self.get_viewport(), self.controller.get_ee_pos())
 
     def reset(self):
 
-        self._init_start_position()
+        print("reset agent")
 
         self.controller.reset()
+        self.robot_ee_position = self.controller.get_ee_pos()
+
+        self._init_start_position()
 
         self.map.reset()
         self.map.update(self.get_viewport(), self.controller.get_ee_pos())
 
     def _init_start_position(self):
-        self.robot_ee_position = self.controller.get_ee_pos()
 
+        pass  # placenta offset
         # x_offset = randint(-2, 2) * self.robot_step
         # y_offset = randint(-2, 2) * self.robot_step
 
-        self.robot_ee_position -= [0, 0, self.robot_height]
+        # self.robot_ee_position -= [0, 0, self.robot_height]
 
     def get_viewport(self):
         return self.controller.get_feto_image()
@@ -96,8 +105,6 @@ class Agent:
         discovered_new_area = self.update_map(position_difference)
         self.controller.wait_for_ms(500)
 
-        # print("Moved by: ", np.round(vec, 3))
-
         return action_success, discovered_new_area
 
     def update_map(self, position_difference):
@@ -115,7 +122,7 @@ class Agent:
             # a = self.controller.get_ee_pos()
 
             self.robot_ee_position += partial_vector
-            self.controller.move_ee(self.robot_ee_position, movement_vector)
+            self.controller.move_ee(self.robot_ee_position, partial_vector)
             self.controller.wait_for_ms(100)
 
             # b = self.controller.get_ee_pos()
