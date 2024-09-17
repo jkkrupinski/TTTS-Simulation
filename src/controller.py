@@ -17,12 +17,17 @@ class Controller(MuJoCoBase):
     to perform tasks on an already instantiated simulation.
     """
 
-    def __init__(self, render_mode):
+    def __init__(self, render_mode, rcm_height=0.28, ee_height=0.14):
 
         xml_path = "scene/main.xml"
         super().__init__(xml_path)
 
         self.render_mode = render_mode
+
+        print("init contr")
+
+        self.rcm_height = rcm_height
+        self.ee_height = ee_height
 
         self.theta_x = 0
         self.theta_y = 0
@@ -97,8 +102,12 @@ class Controller(MuJoCoBase):
         self.last_movement_steps = 0
 
     def reset(self):
+        print("reset contr")
+
         self.data.qpos[:] = self.init_qpos
         self.data.qvel[:] = np.zeros((7,))
+
+        self.move_to_start_position()
 
         self.last_movement_steps = 0
 
@@ -167,13 +176,15 @@ class Controller(MuJoCoBase):
             ee_position: List of XYZ-coordinates of the end-effector (ee_link for UR5 setup).
         """
 
-        a = np.arctan(movement_vector[0] / 0.15)
-        b = np.arctan(movement_vector[1] / 0.15)
+        d_theta_x, d_theta_y = self.calculate_tool_rotation(movement_vector)
+
+        self.theta_x += d_theta_x  # Tilt by d_theta_x radians in x-axis
+        self.theta_y += d_theta_y  # Tilt by d_theta_y radians in y-axis
 
         # move marker where the ee should be
         self.model.body("ee_marker").pos = ee_position
 
-        joint_angles = self.inverse_kinematic(ee_position, a, b)
+        joint_angles = self.inverse_kinematic(ee_position)
         if joint_angles is not None:
             result = self.move_joints(target=joint_angles)
         else:
@@ -181,6 +192,14 @@ class Controller(MuJoCoBase):
             self.last_movement_steps = 0
 
         return result
+
+    def move_to_start_position(self):
+
+        self.theta_x = 0
+        self.theta_y = 0
+
+        self.move_ee([0, 0, self.rcm_height], np.zeros(3))
+        self.move_ee([0, 0, self.ee_height], np.zeros(3))
 
     def wait_for_ms(self, duration):
         """
@@ -234,7 +253,14 @@ class Controller(MuJoCoBase):
 
         return new_orientation
 
-    def inverse_kinematic(self, ee_position, theta_x, theta_y):
+    def calculate_tool_rotation(self, movement_vector):
+        height = self.rcm_height - self.ee_height
+        d_theta_x = np.arctan(movement_vector[0] / height)
+        d_theta_y = np.arctan(movement_vector[1] / height)
+
+        return d_theta_x, d_theta_y
+
+    def inverse_kinematic(self, ee_position):
         """
         Method for solving simple inverse kinematic problems.
         This was developed for top down grasping, therefore the solution will be one where the gripper is
@@ -250,9 +276,6 @@ class Controller(MuJoCoBase):
         orientation_axis = "all"
         target_orientation = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
 
-        self.theta_x += theta_x  # Tilt by 30 degrees in x-axis
-        self.theta_y += theta_y  # Tilt by 45 degrees in y-axis
-
         target_orientation = self.tilt_tool_orientation(
             target_orientation, self.theta_y, self.theta_x
         )
@@ -265,27 +288,12 @@ class Controller(MuJoCoBase):
             orientation_mode=orientation_axis,
         )
 
-        # position = self.ee_chain.forward_kinematics(joint_angles)[:3, 3]
-        # orientation = self.ee_chain.forward_kinematics(joint_angles)[:3, :3]
-
-        # print(
-        #     "Requested position: {} vs Reached position: {}".format(
-        #         np.round(ee_position_base, 3), np.round(position, 3)
-        #     )
-        # )
-        # print("Requested orientation on the X axis: {} vs Reached orientation on the X axis: {}".format(target_orientation, np.round(orientation,2)))
-        # print()
-
         prediction = (
             self.ee_chain.forward_kinematics(joint_angles)[:3, 3] + self.base_pos
         )
-        # print("pred",np.round(prediction,2))
 
         diff = abs(prediction - ee_position)
-        # print("diff",diff)
-
         error = np.sqrt(diff.dot(diff))
-        # print("error: ",error)
 
         if error <= 0.3:
             return joint_angles

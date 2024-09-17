@@ -29,6 +29,8 @@ class Environment(MujocoEnv, utils.EzPickle):
 
     def __init__(self, render_mode=None):
 
+        print("init env")
+
         xml_path = "scene/main.xml"
         self.render_mode = render_mode
 
@@ -74,6 +76,8 @@ class Environment(MujocoEnv, utils.EzPickle):
         return self.action_space
 
     def reset_model(self, options=None):
+
+        print("reset env")
 
         seed = random.randint(0, 100)
         random.seed(seed)
