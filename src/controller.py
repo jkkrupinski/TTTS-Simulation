@@ -4,6 +4,8 @@ import mujoco as mj
 import numpy as np
 import cv2 as cv
 
+from random import randint, uniform
+
 import ikpy.chain
 from mujoco.glfw import glfw
 from misc.mujoco_base import MuJoCoBase
@@ -17,14 +19,13 @@ class Controller(MuJoCoBase):
     to perform tasks on an already instantiated simulation.
     """
 
-    def __init__(self, render_mode, rcm_height=0.28, ee_height=0.14):
+    def __init__(self, render_mode, ee_height=0.14, rcm_height=0.28, rcm_mode=True):
 
         xml_path = "scene/main.xml"
         super().__init__(xml_path)
 
         self.render_mode = render_mode
-
-        print("init contr")
+        self.rcm_mode = rcm_mode
 
         self.rcm_height = rcm_height
         self.ee_height = ee_height
@@ -102,10 +103,11 @@ class Controller(MuJoCoBase):
         self.last_movement_steps = 0
 
     def reset(self):
-        print("reset contr")
 
         self.data.qpos[:] = self.init_qpos
         self.data.qvel[:] = np.zeros((7,))
+
+        self.offset_placenta_position()
 
         self.move_to_start_position()
 
@@ -176,10 +178,11 @@ class Controller(MuJoCoBase):
             ee_position: List of XYZ-coordinates of the end-effector (ee_link for UR5 setup).
         """
 
-        d_theta_x, d_theta_y = self.calculate_tool_rotation(movement_vector)
+        if self.rcm_mode:
+            d_theta_x, d_theta_y = self.calculate_tool_rotation(movement_vector)
 
-        self.theta_x += d_theta_x  # Tilt by d_theta_x radians in x-axis
-        self.theta_y += d_theta_y  # Tilt by d_theta_y radians in y-axis
+            self.theta_x += d_theta_x  # Tilt by d_theta_x radians in x-axis
+            self.theta_y += d_theta_y  # Tilt by d_theta_y radians in y-axis
 
         # move marker where the ee should be
         self.model.body("ee_marker").pos = ee_position
@@ -276,9 +279,10 @@ class Controller(MuJoCoBase):
         orientation_axis = "all"
         target_orientation = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
 
-        target_orientation = self.tilt_tool_orientation(
-            target_orientation, self.theta_y, self.theta_x
-        )
+        if self.rcm_mode:
+            target_orientation = self.tilt_tool_orientation(
+                target_orientation, self.theta_y, self.theta_x
+            )
 
         ee_position_base = ee_position - self.base_pos
 
@@ -337,6 +341,27 @@ class Controller(MuJoCoBase):
             gray_array = cv.bitwise_and(gray_array, gray_array, mask=mask)
         cv.imwrite(path, gray_array)
 
+    def offset_placenta_position(self):
+
+        x_offset = uniform(-0.05, 0.05)
+        y_offset = uniform(-0.05, 0.05)
+
+        self.model.body("placenta_seg").pos = [x_offset, y_offset, 0.01]
+
+        # theta = uniform(-1.5708, 1.5708)
+
+        # Rz = np.array(
+        #     [
+        #         [np.cos(theta), -np.sin(theta), 0],
+        #         [np.sin(theta), np.cos(theta), 0],
+        #         [0, 0, 1],
+        #     ]
+        # )
+
+        # Rz_flattened = Rz.flatten()
+
+        # self.data.body("placenta_seg").xmat = Rz_flattened
+
     def render(self):
         self.render_main_window()
         self.render_secondary_window()
@@ -378,37 +403,3 @@ class Controller(MuJoCoBase):
 
         mj.mjr_render(self.feto_viewport, self.scene, self.context_secondary)
         glfw.swap_buffers(self.second_window)
-
-
-if __name__ == "__main__":
-
-    def do_loop():
-        # Define the radius and the center of the circle
-        radius = 0.05
-        center_x = 0
-        center_y = 0
-
-        # Number of points to generate
-        num_points = 20
-
-        # Initialize lists to hold the x and y coordinates
-        x = []
-        y = []
-
-        # Loop through the angles to generate the circle's coordinates
-        for i in range(num_points):
-            theta = 2 * np.pi * i / num_points
-            x = center_x + radius * np.cos(theta)
-            y = center_y + radius * np.sin(theta)
-            pos = [x, y, 0.4]
-            contr.move_ee(pos)
-            contr.wait_for_ms(1_000)
-
-    contr = Controller(render_mode="human")
-
-    pos = [0.0, 0.0, 0.6]
-    contr.move_ee(pos)
-    contr.save_feto_image(with_mask=False)
-    contr.wait_for_ms(5_000)
-
-    do_loop()
