@@ -9,7 +9,7 @@ def main():
 
     observations = env.reset()[0]
 
-    for _ in range(5):
+    for _ in range(25):
 
         action = env.action_space.sample()
         observations, reward, terminated, truncated, info = env.step(action)
