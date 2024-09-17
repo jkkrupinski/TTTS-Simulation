@@ -5,7 +5,12 @@
     </asset>
 
     <worldbody>
-        <geom name="textured_geom" type="plane" pos="0 0 0.01" size="0.07 0.05 0.1" material="textured_material" euler=" 0 0 -1.5708"/>
+
+        <body name="placenta_seg" pos="0 0 0.01" euler="0 0 -1.5708">
+            <inertial pos="0 0 0" mass="0.1" diaginertia="0.0001 0.0001 0.0001"/>
+            <geom name="textured_geom" type="plane"  size="0.07 0.05 0.1" material="textured_material" />
+        </body>
+
     </worldbody>
 
 </mujoco>
