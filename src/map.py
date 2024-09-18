@@ -1,6 +1,9 @@
+import cv2
+
 import numpy as np
 from copy import deepcopy
-import cv2
+
+from misc.map_renderer import mapRenderer
 
 
 WHITE = 255
@@ -14,7 +17,7 @@ EMPTY = 2
 
 class Map:
 
-    def __init__(self, render_dims, render_mode, viewport_length):
+    def __init__(self, render_dims, render_mode, viewport_length, fovy):
 
         self.render_dims = render_dims
         self.render_mode = render_mode
@@ -22,9 +25,12 @@ class Map:
         self._init_grid()
         self._init_image()
         self._init_position()
+        self._init_renderer()
 
         self.agent_id = 30
         self.seen_areas = 0
+
+        self.fovy = fovy
 
         self.cm2px = render_dims / viewport_length
 
@@ -34,7 +40,7 @@ class Map:
         self._init_image()
         self._init_position()
 
-        cv2.destroyAllWindows()
+        self.renderer.reset()
 
         self.seen_areas = 0
 
@@ -57,6 +63,9 @@ class Map:
         self.last_position = deepcopy(self.position)
 
         self.image_position = self.position * self.render_dims
+
+    def _init_renderer(self):
+        self.renderer = mapRenderer(self.render_dims, self.image.shape)
 
     def fill_image(self, viewport):
         filled = False
@@ -85,7 +94,7 @@ class Map:
 
         return filled
 
-    def update(self, viewport, position_difference):
+    def update(self, viewport, position_difference, theta_x, theta_y):
 
         if self.after_reset():
             self.grid[tuple(self.position)] += self.agent_id
@@ -97,6 +106,9 @@ class Map:
             self.update_grid_position()
             return False
 
+        # viewport = self.warp_perspective(
+        #     viewport, theta_x, theta_y, position_difference
+        # )
         filled = self.fill_image(viewport)
         self.process_filled_position(filled)
 
@@ -114,6 +126,69 @@ class Map:
         self.grid[tuple(self.last_position)] -= self.agent_id
         self.last_position = deepcopy(self.position)
 
+    def warp_perspective(self, image, theta_x, theta_y, translation_vector):
+
+        cv2.imshow("Pre", image)
+
+        # Rotation matrices for x and y axis
+        R_x = np.array(
+            [
+                [1, 0, 0],
+                [0, np.cos(theta_x), -np.sin(theta_x)],
+                [0, np.sin(theta_x), np.cos(theta_x)],
+            ]
+        )
+
+        R_y = np.array(
+            [
+                [np.cos(theta_y), 0, np.sin(theta_y)],
+                [0, 1, 0],
+                [-np.sin(theta_y), 0, np.cos(theta_y)],
+            ]
+        )
+
+        # Combined rotation
+        R = np.dot(R_y, R_x)
+
+        # Create the 4x4 homogeneous transformation matrix
+        pose_matrix = np.eye(4)
+        pose_matrix[:3, :3] = R
+        pose_matrix[:3, 3] = translation_vector  # Translation only in x and y, z=0
+
+        # Image dimensions
+        h, w = image.shape[:2]
+
+        # Camera intrinsic parameters (example, you should adjust based on your setup)
+        self.ee_height = 0.14
+        focal_length = self.ee_height / (np.tan(np.deg2rad(self.fovy) / 2))
+        print(focal_length, np.deg2rad(self.fovy))
+        cx, cy = w / 2, h / 2  # Principal point (center of the image)
+
+        # Extract rotation and translation from pose matrices
+        R1 = np.eye(3)
+        R2 = R
+
+        # Compute relative rotation and translation in x-y plane (since z=0)
+        R_rel = R2 @ R1.T
+
+        # Camera intrinsic matrix K
+        fx = fy = focal_length[0]  # * self.cm2px
+
+        K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+
+        # Homography matrix for the x-y plane
+        H = np.dot(K, np.dot(R, np.linalg.inv(K)))
+
+        # Normalize H to make H[2,2] = 1 (optional but common)
+        H /= H[2, 2]
+
+        # Warp the perspective to get the top-down view
+        warped_image = cv2.warpPerspective(image, H, (w, h))
+
+        cv2.imshow("Post", warped_image)
+
+        return warped_image
+
     def process_filled_position(self, filled):
         if filled:
             self.grid[tuple(self.position)] = FILLED + self.agent_id
@@ -123,12 +198,6 @@ class Map:
 
         self.grid[tuple(self.last_position)] -= self.agent_id
         self.last_position = deepcopy(self.position)
-
-    def get_position_px(self):
-        return self.position * self.render_dims
-
-    def get_position_idx(self):
-        return self.position
 
     def get_observation(self):
         return self.grid.flatten()
@@ -148,56 +217,4 @@ class Map:
         return tuple(self.position) == tuple(self.last_position)
 
     def render(self):
-
-        scale = 8
-
-        original_height, original_width = self.image.shape[:2]
-
-        new_width = original_width // scale
-        new_height = original_height // scale
-
-        self.render_map(new_width, new_height)
-        self.render_grid(new_width, new_height)
-
-    def render_map(self, new_width, new_height):
-
-        image = deepcopy(self.image)
-        image = self.add_marker(image)
-
-        resized_image = cv2.resize(
-            image, (new_width, new_height), interpolation=cv2.INTER_AREA
-        )
-
-        transposed_image = np.transpose(resized_image, (1, 0))
-
-        cv2.imshow("Map", transposed_image)
-        cv2.moveWindow("Map", 1200, 600)
-        cv2.waitKey(1)
-
-    def render_grid(self, new_width, new_height):
-        resized_grid = cv2.resize(
-            (self.grid + 10) * 4, (new_width, new_height), interpolation=cv2.INTER_AREA
-        )
-
-        transposed_grid = np.transpose(resized_grid, (1, 0))
-
-        cv2.imshow("Grid", transposed_grid)
-        cv2.moveWindow("Grid", 1200, 0)
-        cv2.waitKey(1)
-
-        # print(self.grid.T, "\n")
-
-    def add_marker(self, image):
-
-        image = cv2.rectangle(
-            image,
-            (self.image_position[1], self.image_position[0]),
-            (
-                self.image_position[1] + self.render_dims,
-                self.image_position[0] + self.render_dims,
-            ),
-            color=100,
-            thickness=6,
-        )
-
-        return image
+        self.renderer.render(self.image, self.grid, self.image_position)
