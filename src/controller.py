@@ -7,8 +7,9 @@ import cv2 as cv
 from random import randint, uniform
 
 import ikpy.chain
-from mujoco.glfw import glfw
 from misc.mujoco_base import MuJoCoBase
+
+from misc.controller_renderer import contollerRenderer
 
 
 class Controller(MuJoCoBase):
@@ -30,53 +31,22 @@ class Controller(MuJoCoBase):
         self.rcm_height = rcm_height
         self.ee_height = ee_height
 
-        self.theta_x = 0
-        self.theta_y = 0
-
-        self._init_main_cam()
-        self._init_feto_cam()
-        self._init_feto_window()
-
+        self._init_renderer()
         self._init_kinematic_chain()
         self._init_robot_info()
 
-    def _init_main_cam(self):
-        self.cam.azimuth = 90.0
-        self.cam.elevation = -24.0
-        self.cam.distance = 2.0
-        self.cam.lookat = np.array([0.0, 0.0, 0.0])
-
-    def _init_feto_cam(self):
-        self.feto_cam = mj.MjvCamera()
+    def _init_renderer(self):
         self.render_dims = 256
-
-        self.feto_viewport = mj.MjrRect(0, 0, self.render_dims, self.render_dims)
-        self.context_secondary = mj.MjrContext(
-            self.model, mj.mjtFontScale.mjFONTSCALE_150
+        self.renderer = contollerRenderer(
+            self.window,
+            self.cam,
+            self.model,
+            self.data,
+            self.opt,
+            self.scene,
+            self.context,
+            self.render_dims,
         )
-
-        camera_name = "eye"
-        camera_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_CAMERA, camera_name)
-
-        self.feto_fovy = self.model.camera("eye").fovy
-
-        self.feto_cam.type = mj.mjtCamera.mjCAMERA_FIXED
-        self.feto_cam.fixedcamid = camera_id
-
-    def _init_feto_window(self):
-        glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
-        self.second_window = glfw.create_window(
-            self.render_dims, self.render_dims, "Fetoscope View", None, None
-        )
-
-        glfw.set_window_pos(self.second_window, 20, 200)
-
-        if not self.second_window:
-            glfw.terminate()
-            raise Exception("Second GLFW window could not be created")
-
-        glfw.make_context_current(self.second_window)
-        glfw.show_window(self.second_window)
 
     def _init_kinematic_chain(self):
         urdf_path = "scene/ufactory_xarm7/xarm7.urdf"
@@ -100,7 +70,13 @@ class Controller(MuJoCoBase):
         self.num_of_accuators = len(self.data.ctrl)
         self.current_target_joint_values = np.zeros(self.num_of_accuators)
         self.base_pos = self.model.body("link_base").pos
+
         self.last_movement_steps = 0
+
+        self.feto_fovy = self.model.camera("eye").fovy
+
+        self.theta_x = 0
+        self.theta_y = 0
 
     def reset(self):
 
@@ -316,13 +292,19 @@ class Controller(MuJoCoBase):
 
         return ee_pos
 
+    def get_ee_rotation(self):
+        return self.theta_x, self.theta_y
+
     def get_feto_image(self):
         dimensions = 3
         pixels_buffer = np.zeros(
             (self.render_dims * self.render_dims * dimensions, 1), dtype=np.uint8
         )
         mj.mjr_readPixels(
-            pixels_buffer, None, self.feto_viewport, self.context_secondary
+            pixels_buffer,
+            None,
+            self.renderer.feto_viewport,
+            self.renderer.context_secondary,
         )
 
         reshaped_array = pixels_buffer.reshape(
@@ -363,43 +345,4 @@ class Controller(MuJoCoBase):
         # self.data.body("placenta_seg").xmat = Rz_flattened
 
     def render(self):
-        self.render_main_window()
-        self.render_secondary_window()
-        glfw.poll_events()
-
-    def render_main_window(self):
-        viewport_width, viewport_height = glfw.get_framebuffer_size(self.window)
-        main_viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
-        glfw.make_context_current(self.window)
-
-        mj.mjv_updateScene(
-            self.model,
-            self.data,
-            self.opt,
-            None,
-            self.cam,
-            mj.mjtCatBit.mjCAT_ALL.value,
-            self.scene,
-        )
-
-        mj.mjr_render(main_viewport, self.scene, self.context)
-        glfw.swap_buffers(self.window)
-
-    def render_secondary_window(self):
-        glfw.make_context_current(self.second_window)
-        self.context_secondary = mj.MjrContext(
-            self.model, mj.mjtFontScale.mjFONTSCALE_150
-        )
-
-        mj.mjv_updateScene(
-            self.model,
-            self.data,
-            self.opt,
-            None,
-            self.feto_cam,
-            mj.mjtCatBit.mjCAT_ALL.value,
-            self.scene,
-        )
-
-        mj.mjr_render(self.feto_viewport, self.scene, self.context_secondary)
-        glfw.swap_buffers(self.second_window)
+        self.renderer.render()

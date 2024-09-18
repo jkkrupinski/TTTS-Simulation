@@ -17,8 +17,8 @@ class Agent:
             self.render_mode, self.ee_height, self.rcm_height, rcm_mode=True
         )
 
-        self.robot_step = 0.023
-        self.num_of_steps = 2
+        self.robot_step = 0.01
+        self.num_of_steps = 1
 
         fovy = self.controller.feto_fovy
         placenta_width = 0.01
@@ -27,9 +27,11 @@ class Agent:
         viewport_length = 2 * height_from_placenta * np.tan(np.deg2rad(fovy / 2))
         # print(viewport_length)
 
-        self.map = Map(self.controller.render_dims, self.render_mode, viewport_length)
+        self.map = Map(self.controller.render_dims, self.render_mode, viewport_length, self.controller.feto_fovy)
 
-        self.map.update(self.get_viewport(), self.controller.get_ee_pos())
+        self.map.update(
+            self.get_viewport(), self.controller.get_ee_pos(), theta_x=0, theta_y=0
+        )
 
     def reset(self):
 
@@ -37,7 +39,9 @@ class Agent:
         self.robot_ee_position = self.controller.get_ee_pos()
 
         self.map.reset()
-        self.map.update(self.get_viewport(), self.controller.get_ee_pos())
+        self.map.update(
+            self.get_viewport(), self.controller.get_ee_pos(), theta_x=0, theta_y=0
+        )
 
     def get_viewport(self):
         return self.controller.get_feto_image()
@@ -90,7 +94,8 @@ class Agent:
 
     def update_map(self, position_difference):
         viewport = self.get_viewport()
-        return self.map.update(viewport, position_difference)
+        theta_x, theta_y = self.controller.get_ee_rotation()
+        return self.map.update(viewport, position_difference, theta_x, theta_y)
 
     def move_robot(self, movement_vector):
 
