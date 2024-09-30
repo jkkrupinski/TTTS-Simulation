@@ -17,17 +17,22 @@ class Agent:
             self.render_mode, self.ee_height, self.rcm_height, rcm_mode=True
         )
 
-        self.robot_step = 0.01
-        self.num_of_steps = 1
+        self.robot_step = 0.011
+        self.num_of_steps = 2
 
-        fovy = self.controller.feto_fovy
-        placenta_width = 0.01
+        placenta_height = 0.01
 
-        height_from_placenta = self.ee_height - placenta_width
-        viewport_length = 2 * height_from_placenta * np.tan(np.deg2rad(fovy / 2))
+        height_from_placenta = self.ee_height - placenta_height
+
+        # viewport_length = 2 * height_from_placenta * np.tan(np.deg2rad(fovy / 2))
         # print(viewport_length)
 
-        self.map = Map(self.controller.render_dims, self.render_mode, viewport_length, self.controller.feto_fovy)
+        self.map = Map(
+            self.controller.render_dims,
+            self.render_mode,
+            height_from_placenta,
+            self.controller.feto_fovy,
+        )
 
         self.map.update(
             self.get_viewport(), self.controller.get_ee_pos(), theta_x=0, theta_y=0
@@ -88,7 +93,7 @@ class Agent:
 
         position_difference = self.move_robot(movement_vector)
         discovered_new_area = self.update_map(position_difference)
-        self.controller.wait_for_ms(500)
+        self.controller.wait_for_ms(100)
 
         return action_success, discovered_new_area
 
