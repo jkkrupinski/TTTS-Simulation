@@ -17,7 +17,7 @@ EMPTY = 2
 
 class Map:
 
-    def __init__(self, render_dims, render_mode, viewport_length, fovy):
+    def __init__(self, render_dims, render_mode, ee_height, fovy_deg):
 
         self.render_dims = render_dims
         self.render_mode = render_mode
@@ -30,9 +30,39 @@ class Map:
         self.agent_id = 30
         self.seen_areas = 0
 
-        self.fovy = fovy
+        self.ee_height = ee_height
 
-        self.cm2px = render_dims / viewport_length
+        self.fovy = np.deg2rad(fovy_deg)
+        self.theta_x = 0
+        self.theta_y = 0
+
+        self.e_x = self.e_y = 0
+
+        self.init_viewport_length = 2 * self.ee_height * np.tan(self.fovy / 2)
+
+        self.cm2px = np.array(
+            [
+                self.render_dims / self.init_viewport_length,
+                self.render_dims / self.init_viewport_length,
+            ]
+        )
+
+    def update_scaler(self):
+
+        viewport_length_x = self.init_viewport_length / np.cos(self.theta_x)
+        viewport_length_y = self.init_viewport_length / np.cos(self.theta_y)
+
+        if viewport_length_x == 0:
+            viewport_length_x = self.init_viewport_length
+        if viewport_length_y == 0:
+            viewport_length_y = self.init_viewport_length
+
+        self.cm2px = np.array(
+            [
+                self.render_dims / viewport_length_x,
+                self.render_dims / viewport_length_y,
+            ]
+        )
 
     def reset(self):
 
@@ -100,15 +130,18 @@ class Map:
             self.grid[tuple(self.position)] += self.agent_id
             return False
 
+        self.theta_x = -theta_y
+        self.theta_y = -theta_x
+
+        self.update_scaler()
+
         self.update_image_position(position_difference)
 
         if self.was_here():
             self.update_grid_position()
             return False
 
-        # viewport = self.warp_perspective(
-        #     viewport, theta_x, theta_y, position_difference
-        # )
+        viewport = self.warp_perspective(viewport, theta_x, theta_y)
         filled = self.fill_image(viewport)
         self.process_filled_position(filled)
 
@@ -119,18 +152,28 @@ class Map:
         y = position_difference[1]
         global_position_difference = np.array([-y, -x])
 
-        self.image_position += (global_position_difference * self.cm2px).astype(int)
+        # self.e_x = np.tan(self.theta_x) * self.ee_height
+        # self.e_y = np.tan(self.theta_y) * self.ee_height
+        # print("e cm", self.e_x, global_position_difference[0],"\n",self.e_y, global_position_difference[1])
+
+        self.e_x = self.e_y = 0
+
+        angle_scaler = 2  # ee moves by certain vector and distance on map is double because of rotation angle
+
+        self.image_position[0] += (
+            (angle_scaler * global_position_difference[0] + self.e_x) * self.cm2px[0]
+        ).astype(int)
+        self.image_position[1] += (
+            (angle_scaler * global_position_difference[1] + self.e_y) * self.cm2px[1]
+        ).astype(int)
 
     def update_grid_position(self):
         self.grid[tuple(self.position)] += self.agent_id
         self.grid[tuple(self.last_position)] -= self.agent_id
         self.last_position = deepcopy(self.position)
 
-    def warp_perspective(self, image, theta_x, theta_y, translation_vector):
+    def warp_perspective(self, image, theta_x, theta_y):
 
-        cv2.imshow("Pre", image)
-
-        # Rotation matrices for x and y axis
         R_x = np.array(
             [
                 [1, 0, 0],
@@ -147,45 +190,44 @@ class Map:
             ]
         )
 
-        # Combined rotation
-        R = np.dot(R_y, R_x)
+        R = R_y @ R_x
 
-        # Create the 4x4 homogeneous transformation matrix
-        pose_matrix = np.eye(4)
-        pose_matrix[:3, :3] = R
-        pose_matrix[:3, 3] = translation_vector  # Translation only in x and y, z=0
-
-        # Image dimensions
         h, w = image.shape[:2]
 
-        # Camera intrinsic parameters (example, you should adjust based on your setup)
-        self.ee_height = 0.14
-        focal_length = self.ee_height / (np.tan(np.deg2rad(self.fovy) / 2))
-        print(focal_length, np.deg2rad(self.fovy))
-        cx, cy = w / 2, h / 2  # Principal point (center of the image)
-
-        # Extract rotation and translation from pose matrices
-        R1 = np.eye(3)
-        R2 = R
-
-        # Compute relative rotation and translation in x-y plane (since z=0)
-        R_rel = R2 @ R1.T
+        focal_length = 256 / (2 * np.tan(self.fovy / 2))
+        cx, cy = (
+            w / 2,
+            h / 2,
+        )  # Principal point (center of the image)
 
         # Camera intrinsic matrix K
-        fx = fy = focal_length[0]  # * self.cm2px
-
+        fx = fy = focal_length[0]
         K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
 
-        # Homography matrix for the x-y plane
-        H = np.dot(K, np.dot(R, np.linalg.inv(K)))
+        H = K @ R @ np.linalg.inv(K)
+        H = H / H[2, 2]
 
-        # Normalize H to make H[2,2] = 1 (optional but common)
-        H /= H[2, 2]
+        # Calculate new bounding box for the warped image
+        # Create a set of points to warp
+        points = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
+        warped_points = cv2.perspectiveTransform(points[None, :, :], H)[0]
+
+        # Determine the bounding box of the warped image
+        min_x = int(np.min(warped_points[:, 0]))
+        max_x = int(np.max(warped_points[:, 0]))
+        min_y = int(np.min(warped_points[:, 1]))
+        max_y = int(np.max(warped_points[:, 1]))
+
+        # Calculate the size of the new image
+        new_width = max_x - min_x
+        new_height = max_y - min_y
+
+        # Offset the homography to ensure the image is correctly positioned
+        translation = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]])
+        H = translation @ H  # Adjust the homography
 
         # Warp the perspective to get the top-down view
-        warped_image = cv2.warpPerspective(image, H, (w, h))
-
-        cv2.imshow("Post", warped_image)
+        warped_image = cv2.warpPerspective(image, H, (new_width, new_height))
 
         return warped_image
 
