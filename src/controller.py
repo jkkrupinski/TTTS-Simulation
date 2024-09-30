@@ -146,14 +146,6 @@ class Controller(MuJoCoBase):
         return result
 
     def move_ee(self, ee_position, movement_vector):
-        """
-        Moves the robot arm so that the gripper center ends up at the requested XYZ-position,
-        with a vertical gripper position.
-
-        Args:
-            ee_position: List of XYZ-coordinates of the end-effector (ee_link for UR5 setup).
-        """
-
         if self.rcm_mode:
             d_theta_x, d_theta_y = self.calculate_tool_rotation(movement_vector)
 
@@ -181,13 +173,6 @@ class Controller(MuJoCoBase):
         self.move_ee([0, 0, self.ee_height], np.zeros(3))
 
     def wait_for_ms(self, duration):
-        """
-        Holds the current position by actuating the joints towards their current target position.
-
-        Args:
-            duration: Time in ms to hold the position.
-        """
-
         starting_time = time.time()
         elapsed = 0
         while elapsed < duration:
@@ -198,18 +183,7 @@ class Controller(MuJoCoBase):
             elapsed = (time.time() - starting_time) * 1000
 
     def tilt_tool_orientation(self, target_orientation, theta_x, theta_y):
-        """
-        Returns the new orientation matrix after tilting the tool in x and y axes.
 
-        Parameters:
-        - target_orientation: The original 3x3 orientation matrix
-        - theta_x: Rotation angle around the x-axis in radians
-        - theta_y: Rotation angle around the y-axis in radians
-
-        Returns:
-        - new_orientation: The new orientation matrix
-        """
-        # Rotation matrix around x-axis
         R_x = np.array(
             [
                 [1, 0, 0],
@@ -218,7 +192,6 @@ class Controller(MuJoCoBase):
             ]
         )
 
-        # Rotation matrix around y-axis
         R_y = np.array(
             [
                 [np.cos(theta_y), 0, np.sin(theta_y)],
@@ -227,7 +200,6 @@ class Controller(MuJoCoBase):
             ]
         )
 
-        # Apply rotations to the target orientation
         new_orientation = target_orientation @ R_y @ R_x
 
         return new_orientation
@@ -240,18 +212,6 @@ class Controller(MuJoCoBase):
         return d_theta_x, d_theta_y
 
     def inverse_kinematic(self, ee_position):
-        """
-        Method for solving simple inverse kinematic problems.
-        This was developed for top down grasping, therefore the solution will be one where the gripper is
-        vertical. This might need adjustment for other gripper models.
-
-        Args:
-            ee_position: List of XYZ-coordinates of the end-effector (ee_link for UR5 setup).
-
-        Returns:
-            joint_angles: List of joint angles that will achieve the desired ee position.
-        """
-
         orientation_axis = "all"
         target_orientation = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
 
@@ -325,8 +285,8 @@ class Controller(MuJoCoBase):
 
     def offset_placenta_position(self):
 
-        x_offset = uniform(-0.05, 0.05)
-        y_offset = uniform(-0.05, 0.05)
+        x_offset = uniform(-0.02, 0.02)
+        y_offset = uniform(-0.02, 0.02)
 
         self.model.body("placenta_seg").pos = [x_offset, y_offset, 0.01]
 
