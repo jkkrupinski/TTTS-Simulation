@@ -30,7 +30,7 @@ def main():
 
     contr = Controller(render_mode="human")
 
-    pos = [0.0, 0.0, 0.6]
+    pos = [0.0, 0.0, 0.28]
     contr.move_ee(pos, [0, 0, 0])
     contr.save_feto_image(with_mask=False)
     contr.wait_for_ms(5_000)

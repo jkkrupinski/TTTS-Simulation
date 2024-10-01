@@ -55,18 +55,37 @@ This project is a part of a Master Thesis. Main goal is to create a simulation f
 
 ## Usage
 
-### Basic Usage
+### Main script
 
-
-- To run environment with random actions run environment.py script
-
-    ```sh
-    python tests/test_environment.py
-    ```
-
-- To run a test of the trained model on the simulation environment run test.py script
+- To run a test of the trained model on the simulation environment run test_model.py script
 
     ```sh
     python tests/test_model.py
     ```
 
+
+
+### Tests
+- To run environment with agent taking random actions run environment.py script
+
+    ```sh
+    python tests/test_environment.py
+    ```
+
+- To run a test with maual steering using arrows run test_manual.py script
+
+    ```sh
+    python tests/test_manual.py
+    ```
+
+- To test gymnasium simulation environment run test_environment.py script
+
+    ```sh
+    python tests/test_environment.py
+    ```
+
+- To test basic controller steering run test_controller.py script
+
+    ```sh
+    python tests/test_controller.py
+    ```

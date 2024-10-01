@@ -10,3 +10,7 @@ def main():
     print("Check environment begin")
     check_env(env.unwrapped)
     print("Check environment end")
+
+
+if __name__ == "__main__":
+    main()
