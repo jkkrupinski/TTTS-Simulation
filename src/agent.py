@@ -6,7 +6,7 @@ from misc.actions import Actions
 
 
 class Agent:
-    def __init__(self, render_mode) -> None:
+    def __init__(self, render_mode, rcm_mode) -> None:
 
         self.render_mode = render_mode
 
@@ -14,12 +14,15 @@ class Agent:
         self.rcm_height = 0.28
 
         self.controller = Controller(
-            self.render_mode, self.ee_height, self.rcm_height, rcm_mode=True
+            self.render_mode, self.ee_height, self.rcm_height, rcm_mode
         )
 
-        self.robot_step = 0.011
-        self.num_of_steps = 2
+        if rcm_mode:
+            self.robot_step = 0.011
+        else:
+            self.robot_step = 0.022
 
+        self.num_of_steps = 2
         placenta_height = 0.01
 
         height_from_placenta = self.ee_height - placenta_height
@@ -32,6 +35,7 @@ class Agent:
             self.render_mode,
             height_from_placenta,
             self.controller.feto_fovy,
+            rcm_mode,
         )
 
         self.map.update(

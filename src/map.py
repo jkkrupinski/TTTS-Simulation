@@ -17,10 +17,11 @@ EMPTY = 2
 
 class Map:
 
-    def __init__(self, render_dims, render_mode, ee_height, fovy_deg):
+    def __init__(self, render_dims, render_mode, ee_height, fovy_deg, rcm_mode):
 
         self.render_dims = render_dims
         self.render_mode = render_mode
+        self.rcm_mode = rcm_mode
 
         self._init_grid()
         self._init_image()
@@ -44,23 +45,6 @@ class Map:
             [
                 self.render_dims / self.init_viewport_length,
                 self.render_dims / self.init_viewport_length,
-            ]
-        )
-
-    def update_scaler(self):
-
-        viewport_length_x = self.init_viewport_length / np.cos(self.theta_x)
-        viewport_length_y = self.init_viewport_length / np.cos(self.theta_y)
-
-        if viewport_length_x == 0:
-            viewport_length_x = self.init_viewport_length
-        if viewport_length_y == 0:
-            viewport_length_y = self.init_viewport_length
-
-        self.cm2px = np.array(
-            [
-                self.render_dims / viewport_length_x,
-                self.render_dims / viewport_length_y,
             ]
         )
 
@@ -130,10 +114,11 @@ class Map:
             self.grid[tuple(self.position)] += self.agent_id
             return False
 
-        self.theta_x = -theta_y
-        self.theta_y = -theta_x
+        if self.rcm_mode:
+            self.theta_x = -theta_y
+            self.theta_y = -theta_x
 
-        self.update_scaler()
+            self.update_scaler()
 
         self.update_image_position(position_difference)
 
@@ -141,7 +126,9 @@ class Map:
             self.update_grid_position()
             return False
 
-        viewport = self.warp_perspective(viewport, theta_x, theta_y)
+        if self.rcm_mode:
+            viewport = self.warp_perspective(viewport, theta_x, theta_y)
+
         filled = self.fill_image(viewport)
         self.process_filled_position(filled)
 
@@ -152,20 +139,38 @@ class Map:
         y = position_difference[1]
         global_position_difference = np.array([-y, -x])
 
-        # self.e_x = np.tan(self.theta_x) * self.ee_height
-        # self.e_y = np.tan(self.theta_y) * self.ee_height
-        # print("e cm", self.e_x, global_position_difference[0],"\n",self.e_y, global_position_difference[1])
+        new_e_x = np.tan(self.theta_x) * self.ee_height
+        new_e_y = np.tan(self.theta_y) * self.ee_height
 
-        self.e_x = self.e_y = 0
+        diff_x = new_e_x - self.e_x
+        diff_y = new_e_y - self.e_y
 
-        angle_scaler = 2  # ee moves by certain vector and distance on map is double because of rotation angle
+        self.e_x = new_e_x
+        self.e_y = new_e_y
 
         self.image_position[0] += (
-            (angle_scaler * global_position_difference[0] + self.e_x) * self.cm2px[0]
+            (global_position_difference[0] + diff_x) * self.cm2px[0]
         ).astype(int)
         self.image_position[1] += (
-            (angle_scaler * global_position_difference[1] + self.e_y) * self.cm2px[1]
+            (global_position_difference[1] + diff_y) * self.cm2px[1]
         ).astype(int)
+
+    def update_scaler(self):
+
+        viewport_length_x = self.init_viewport_length / np.cos(self.theta_x)
+        viewport_length_y = self.init_viewport_length / np.cos(self.theta_y)
+
+        if viewport_length_x == 0:
+            viewport_length_x = self.init_viewport_length
+        if viewport_length_y == 0:
+            viewport_length_y = self.init_viewport_length
+
+        self.cm2px = np.array(
+            [
+                self.render_dims / viewport_length_x,
+                self.render_dims / viewport_length_y,
+            ]
+        )
 
     def update_grid_position(self):
         self.grid[tuple(self.position)] += self.agent_id
