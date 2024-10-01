@@ -31,6 +31,7 @@ class Environment(MujocoEnv, utils.EzPickle):
 
         xml_path = "scene/main.xml"
         self.render_mode = render_mode
+        self.rcm_mode = False
 
         self._init_rewards_info()
         self._init_agent()
@@ -59,7 +60,7 @@ class Environment(MujocoEnv, utils.EzPickle):
         self.placenta_areas = 30 - 1
 
     def _init_agent(self):
-        self.agent = Agent(self.render_mode)
+        self.agent = Agent(self.render_mode, self.rcm_mode)
 
     def _set_observation_space(self):
         self.observation_space = spaces.Box(
