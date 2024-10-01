@@ -9,33 +9,39 @@ class Agent:
     def __init__(self, render_mode, rcm_mode) -> None:
 
         self.render_mode = render_mode
+        self.rcm_mode = rcm_mode
 
+        self._init_controller()
+        self._init_map()
+
+        if self.rcm_mode:
+            self.robot_step = 0.011  # chosen while testing
+        else:
+            self.robot_step = 0.022  # viewport_length
+
+        self.num_of_steps = 2
+
+    def _init_controller(self):
         self.ee_height = 0.14
         self.rcm_height = 0.28
 
         self.controller = Controller(
-            self.render_mode, self.ee_height, self.rcm_height, rcm_mode
+            self.render_mode, self.ee_height, self.rcm_height, self.rcm_mode
         )
 
-        if rcm_mode:
-            self.robot_step = 0.011
-        else:
-            self.robot_step = 0.022
-
-        self.num_of_steps = 2
-        placenta_height = 0.01
-
-        height_from_placenta = self.ee_height - placenta_height
+        placenta_height = self.controller.placenta_height
+        self.height_from_placenta = self.ee_height - placenta_height
 
         # viewport_length = 2 * height_from_placenta * np.tan(np.deg2rad(fovy / 2))
         # print(viewport_length)
 
+    def _init_map(self):
         self.map = Map(
             self.controller.render_dims,
             self.render_mode,
-            height_from_placenta,
+            self.height_from_placenta,
             self.controller.feto_fovy,
-            rcm_mode,
+            self.rcm_mode,
         )
 
         self.map.update(
@@ -114,16 +120,9 @@ class Agent:
 
         for _ in range(self.num_of_steps):
 
-            # a = self.controller.get_ee_pos()
-
             self.robot_ee_position += partial_vector
             self.controller.move_ee(self.robot_ee_position, partial_vector)
             self.controller.wait_for_ms(100)
-
-            # b = self.controller.get_ee_pos()
-
-            # if _ == 0:
-            #     self.map.fill_image(self.get_viewport(), b - a)
 
         end_position = self.controller.get_ee_pos()
         position_difference = end_position - begin_position
