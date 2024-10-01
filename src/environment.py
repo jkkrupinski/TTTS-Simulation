@@ -31,7 +31,7 @@ class Environment(MujocoEnv, utils.EzPickle):
 
         xml_path = "scene/main.xml"
         self.render_mode = render_mode
-        self.rcm_mode = False
+        self.rcm_mode = True
 
         self._init_rewards_info()
         self._init_agent()

@@ -4,6 +4,7 @@ import numpy as np
 from copy import deepcopy
 
 from misc.map_renderer import mapRenderer
+from misc.warp_perspective import warp_perspective
 
 
 WHITE = 255
@@ -81,13 +82,13 @@ class Map:
     def _init_renderer(self):
         self.renderer = mapRenderer(self.render_dims, self.image.shape)
 
-    def fill_image(self, viewport):
-        filled = False
+    def fill_map_image(self, viewport):
+        was_filled = False
 
         for x_cam, y_cam in np.ndindex(viewport.shape):
 
             if viewport[x_cam, y_cam] >= WHITE_THREASHOLD:
-                filled = True
+                was_filled = True
 
                 if self.render_mode == "human":
 
@@ -96,7 +97,7 @@ class Map:
 
                     self.image[x_map, y_map] = WHITE
                 else:
-                    return filled
+                    return was_filled
 
             else:
                 if self.render_mode == "human":
@@ -106,7 +107,7 @@ class Map:
 
                     self.image[x_map, y_map] = BLACK
 
-        return filled
+        return was_filled
 
     def update(self, viewport, position_difference, theta_x, theta_y):
 
@@ -117,22 +118,21 @@ class Map:
         if self.rcm_mode:
             self.theta_x = -theta_y
             self.theta_y = -theta_x
-
             self.update_scaler()
 
         self.update_image_position(position_difference)
 
         if self.was_here():
-            self.update_grid_position()
+            self.move_agent_marker()
             return False
 
         if self.rcm_mode:
-            viewport = self.warp_perspective(viewport, theta_x, theta_y)
+            viewport = warp_perspective(viewport, self.fovy, theta_x, theta_y)
 
-        filled = self.fill_image(viewport)
-        self.process_filled_position(filled)
+        was_filled = self.fill_map_image(viewport)
+        self.update_grid(was_filled)
 
-        return filled
+        return was_filled
 
     def update_image_position(self, position_difference):
         x = position_difference[0]
@@ -172,72 +172,13 @@ class Map:
             ]
         )
 
-    def update_grid_position(self):
+    def move_agent_marker(self):
         self.grid[tuple(self.position)] += self.agent_id
         self.grid[tuple(self.last_position)] -= self.agent_id
         self.last_position = deepcopy(self.position)
 
-    def warp_perspective(self, image, theta_x, theta_y):
-
-        R_x = np.array(
-            [
-                [1, 0, 0],
-                [0, np.cos(theta_x), -np.sin(theta_x)],
-                [0, np.sin(theta_x), np.cos(theta_x)],
-            ]
-        )
-
-        R_y = np.array(
-            [
-                [np.cos(theta_y), 0, np.sin(theta_y)],
-                [0, 1, 0],
-                [-np.sin(theta_y), 0, np.cos(theta_y)],
-            ]
-        )
-
-        R = R_y @ R_x
-
-        h, w = image.shape[:2]
-
-        focal_length = 256 / (2 * np.tan(self.fovy / 2))
-        cx, cy = (
-            w / 2,
-            h / 2,
-        )  # Principal point (center of the image)
-
-        # Camera intrinsic matrix K
-        fx = fy = focal_length[0]
-        K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
-
-        H = K @ R @ np.linalg.inv(K)
-        H = H / H[2, 2]
-
-        # Calculate new bounding box for the warped image
-        # Create a set of points to warp
-        points = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
-        warped_points = cv2.perspectiveTransform(points[None, :, :], H)[0]
-
-        # Determine the bounding box of the warped image
-        min_x = int(np.min(warped_points[:, 0]))
-        max_x = int(np.max(warped_points[:, 0]))
-        min_y = int(np.min(warped_points[:, 1]))
-        max_y = int(np.max(warped_points[:, 1]))
-
-        # Calculate the size of the new image
-        new_width = max_x - min_x
-        new_height = max_y - min_y
-
-        # Offset the homography to ensure the image is correctly positioned
-        translation = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]])
-        H = translation @ H  # Adjust the homography
-
-        # Warp the perspective to get the top-down view
-        warped_image = cv2.warpPerspective(image, H, (new_width, new_height))
-
-        return warped_image
-
-    def process_filled_position(self, filled):
-        if filled:
+    def update_grid(self, was_filled):
+        if was_filled:
             self.grid[tuple(self.position)] = FILLED + self.agent_id
             self.seen_areas += 1
         else:

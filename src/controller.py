@@ -31,6 +31,8 @@ class Controller(MuJoCoBase):
         self.rcm_height = rcm_height
         self.ee_height = ee_height
 
+        self.placenta_height = self.model.body("placenta_seg").pos[2]
+
         self._init_renderer()
         self._init_kinematic_chain()
         self._init_robot_info()
