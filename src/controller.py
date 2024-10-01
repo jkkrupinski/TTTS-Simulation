@@ -292,19 +292,5 @@ class Controller(MuJoCoBase):
 
         self.model.body("placenta_seg").pos = [x_offset, y_offset, 0.01]
 
-        # theta = uniform(-1.5708, 1.5708)
-
-        # Rz = np.array(
-        #     [
-        #         [np.cos(theta), -np.sin(theta), 0],
-        #         [np.sin(theta), np.cos(theta), 0],
-        #         [0, 0, 1],
-        #     ]
-        # )
-
-        # Rz_flattened = Rz.flatten()
-
-        # self.data.body("placenta_seg").xmat = Rz_flattened
-
     def render(self):
         self.renderer.render()
