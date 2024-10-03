@@ -6,7 +6,7 @@ import environment
 
 env = gym.make("camera-v3", render_mode="human")
 
-model = PPO.load("models/trained_model")
+model = PPO.load("models/PPO_model")
 model.set_env(env)
 
 obs, info = env.reset()
