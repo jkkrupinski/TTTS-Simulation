@@ -2,6 +2,8 @@ import numpy as np
 
 from controller import Controller
 from map import Map
+from segmenter import Segmenter
+
 from misc.actions import Actions
 
 
@@ -12,6 +14,7 @@ class Agent:
         self.rcm_mode = rcm_mode
 
         self._init_controller()
+        self._init_segmenter()
         self._init_map()
 
         if self.rcm_mode:
@@ -35,6 +38,10 @@ class Agent:
         # viewport_length = 2 * height_from_placenta * np.tan(np.deg2rad(fovy / 2))
         # print(viewport_length)
 
+    def _init_segmenter(self):
+        model_list = ["TTTSNet_model-fold-0.pt"]
+        self.segmenter = Segmenter(model_list)
+
     def _init_map(self):
         self.map = Map(
             self.controller.render_dims,
@@ -45,7 +52,7 @@ class Agent:
         )
 
         self.map.update(
-            self.get_viewport(), self.controller.get_ee_pos(), theta_x=0, theta_y=0
+            self.get_segmentation(), self.controller.get_ee_pos(), theta_x=0, theta_y=0
         )
 
     def reset(self):
@@ -55,11 +62,13 @@ class Agent:
 
         self.map.reset()
         self.map.update(
-            self.get_viewport(), self.controller.get_ee_pos(), theta_x=0, theta_y=0
+            self.get_segmentation(), self.controller.get_ee_pos(), theta_x=0, theta_y=0
         )
 
-    def get_viewport(self):
-        return self.controller.get_feto_image()
+    def get_segmentation(self):
+        viewport = self.controller.get_feto_image()
+        segmentation = self.segmenter(viewport)
+        return segmentation
 
     def get_observation(self):
         return self.map.get_observation()
@@ -108,9 +117,9 @@ class Agent:
         return action_success, discovered_new_area
 
     def update_map(self, position_difference):
-        viewport = self.get_viewport()
+        segmentation = self.get_segmentation()
         theta_x, theta_y = self.controller.get_ee_rotation()
-        return self.map.update(viewport, position_difference, theta_x, theta_y)
+        return self.map.update(segmentation, position_difference, theta_x, theta_y)
 
     def move_robot(self, movement_vector):
 
