@@ -31,7 +31,7 @@ class Controller(MuJoCoBase):
         self.rcm_height = rcm_height
         self.ee_height = ee_height
 
-        self.placenta_height = self.model.body("placenta_seg").pos[2]
+        self.placenta_height = self.model.body("placenta_gen").pos[2]
 
         self._init_renderer()
         self._init_kinematic_chain()
@@ -172,6 +172,7 @@ class Controller(MuJoCoBase):
         self.theta_y = 0
 
         self.move_ee([0, 0, self.rcm_height], np.zeros(3))
+        self.move_ee([0, 0, (self.ee_height + self.rcm_height) / 2], np.zeros(3))
         self.move_ee([0, 0, self.ee_height], np.zeros(3))
 
     def wait_for_ms(self, duration):
@@ -290,7 +291,7 @@ class Controller(MuJoCoBase):
         x_offset = uniform(-0.02, 0.02)
         y_offset = uniform(-0.02, 0.02)
 
-        self.model.body("placenta_seg").pos = [x_offset, y_offset, 0.01]
+        self.model.body("placenta_gen").pos = [x_offset, y_offset, 0.01]
 
     def render(self):
         self.renderer.render()
