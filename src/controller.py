@@ -274,8 +274,9 @@ class Controller(MuJoCoBase):
             self.render_dims, self.render_dims, dimensions
         )
         rotated_array = cv.rotate(reshaped_array, 0)
-        gray_array = cv.cvtColor(rotated_array, cv.COLOR_RGB2GRAY)
-        return gray_array
+        bgr_array = cv.cvtColor(rotated_array, cv.COLOR_RGB2BGR)
+
+        return bgr_array
 
     def save_feto_image(self, with_mask, frame_counter=1):
         path = "imgs/img_" + str(frame_counter) + ".png"
