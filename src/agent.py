@@ -39,7 +39,14 @@ class Agent:
         # print(viewport_length)
 
     def _init_segmenter(self):
-        model_list = ["TTTSNet_model-fold-0.pt"]
+        model_list = [
+            "TTTSNet_model-fold-0.pt",
+            "TTTSNet_model-fold-1.pt",
+            "TTTSNet_model-fold-2.pt",
+            "TTTSNet_model-fold-3.pt",
+            "TTTSNet_model-fold-4.pt",
+            "TTTSNet_model-fold-5.pt",
+        ]
         self.segmenter = Segmenter(model_list)
 
     def _init_map(self):
@@ -112,7 +119,7 @@ class Agent:
 
         position_difference = self.move_robot(movement_vector)
         discovered_new_area = self.update_map(position_difference)
-        self.controller.wait_for_ms(100)
+        self.controller.wait_for_ms(10)
 
         return action_success, discovered_new_area
 
@@ -131,7 +138,7 @@ class Agent:
 
             self.robot_ee_position += partial_vector
             self.controller.move_ee(self.robot_ee_position, partial_vector)
-            self.controller.wait_for_ms(100)
+            self.controller.wait_for_ms(10)
 
         end_position = self.controller.get_ee_pos()
         position_difference = end_position - begin_position
