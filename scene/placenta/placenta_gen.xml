@@ -1,6 +1,6 @@
 <mujoco model="placenta_generated">
     <asset>
-        <texture name="generated" type="2d" file="placenta/assets/generated.png"/>
+        <texture name="generated" type="2d" file="placenta/assets/plac1344.png"/>
         <material name="textured_material" texture="generated"/>
     </asset>
 

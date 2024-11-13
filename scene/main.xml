@@ -12,7 +12,7 @@
   <include file="other/floor.xml"/>
   <include file="other/ee_marker.xml"/>
   <include file="other/rcm_marker.xml"/>
-  <include file="other/patient.xml"/>
+  <!-- <include file="other/patient.xml"/> -->
   
 
 </mujoco>
