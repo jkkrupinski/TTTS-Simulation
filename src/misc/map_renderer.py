@@ -32,8 +32,10 @@ class mapRenderer:
 
         transposed_image = np.transpose(resized_image, (1, 0))
 
+        cv2.imwrite("Map.png", transposed_image)
+
         cv2.imshow("Map", transposed_image)
-        cv2.moveWindow("Map", 1200, 600)
+        cv2.moveWindow("Map", 1400, 600)
         cv2.waitKey(1)
 
     def render_grid(self):
@@ -48,8 +50,10 @@ class mapRenderer:
 
         transposed_grid = np.transpose(resized_grid, (1, 0))
 
+        cv2.imwrite("Grid.png", transposed_grid)
+
         cv2.imshow("Grid", transposed_grid)
-        cv2.moveWindow("Grid", 1200, 0)
+        cv2.moveWindow("Grid", 1400, 0)
         cv2.waitKey(1)
 
         # print(self.grid.T, "\n")

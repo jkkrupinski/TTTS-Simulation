@@ -119,11 +119,16 @@ class Segmenter:
 if __name__ == "__main__":
     seg = Segmenter(
         [
-            "model-fold-3_448_TTTSNet_6122022.pt",
+            "TTTSNet_model-fold-0.pt",
+            "TTTSNet_model-fold-1.pt",
+            "TTTSNet_model-fold-2.pt",
+            "TTTSNet_model-fold-3.pt",
+            "TTTSNet_model-fold-4.pt",
+            "TTTSNet_model-fold-5.pt",
         ]
     )
     pth = "dataset/images/test2.png"
-    img = cv2.imread(pth)
+    img = cv2.imread("a.png")
     out = seg(img)
     cv2.imshow("a", out)
     cv2.waitKey(0)
