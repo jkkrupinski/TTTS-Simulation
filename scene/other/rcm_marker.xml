@@ -2,7 +2,7 @@
 
     <worldbody>
         
-    <body name="rcm" pos="-0.01 0 0.28">
+    <body name="rcm" pos="0.4 0 0.28">
       <inertial pos="0 0 0" mass="0.1" diaginertia="0.0001 0.0001 0.0001"/>
       <geom type="sphere" size="0.01" rgba="0 0 1 1" contype="0" conaffinity="0"/>
     </body>

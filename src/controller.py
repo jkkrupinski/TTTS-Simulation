@@ -85,16 +85,16 @@ class Controller(MuJoCoBase):
         self.data.qpos[:] = self.init_qpos
         self.data.qvel[:] = np.zeros((7,))
 
-        self.offset_placenta_position()
+        # self.offset_placenta_position()
 
-        self.move_to_start_position()
+        # self.move_to_start_position()
 
         self.last_movement_steps = 0
 
     def move_joints(
         self,
         target,
-        tolerance=0.012,
+        tolerance=0.016, # 0.012
         max_steps=1000,
     ):
         """
@@ -171,9 +171,9 @@ class Controller(MuJoCoBase):
         self.theta_x = 0
         self.theta_y = 0
 
-        self.move_ee([0, 0, self.rcm_height], np.zeros(3))
-        self.move_ee([0, 0, (self.ee_height + self.rcm_height) / 2], np.zeros(3))
-        self.move_ee([0, 0, self.ee_height], np.zeros(3))
+        self.move_ee([0.4, 0, self.rcm_height], np.zeros(3))
+        self.move_ee([0.4, 0, (self.ee_height + self.rcm_height) / 2], np.zeros(3))
+        self.move_ee([0.4, 0, self.ee_height], np.zeros(3))
 
     def wait_for_ms(self, duration):
         starting_time = time.time()
@@ -252,6 +252,7 @@ class Controller(MuJoCoBase):
         ee_pos = (
             self.ee_chain.forward_kinematics(extended_joints)[:3, 3] + self.base_pos
         )
+
 
         return ee_pos
 
