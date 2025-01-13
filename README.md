@@ -1,34 +1,20 @@
 # TTTS-Simulation
 
 **Project Description:**
-This project is a part of a Master Thesis. Main goal is to create a simulation for a robotic arm to perform TTTS surgery. Robot will be trained using reinforcement learning on a custom created environment.
+This project is a part of a Master Thesis. Main goal this work is to create and run a simulation for a robotic arm to perform TTTS surgery. Robot will be trained using reinforcement learning on a custom created environment `TTTS-RL`. To simulate real situation, placenta image was generated using trained ControlNet network with Stable Diffusion and with pix2pix framework `Pix2Pix-Placenta`. Mapping process will include segmenting vessels to show clearer view of whole placenta. Segmentation was done with 2 methods: VTA algorithm `TTTS-VTA` and `TTTSNet`. All components will be combined inside MuJoCo simulation environment where the system will be tested as a whole. Last part of the work is sim2real transfer of knowledge from simulation to a real robot in laboratory.
 
-![Project Logo](https://example.com/logo.png) 
+
+<img src="media/robot.jpg" alt="Robot" width="800">
+
 
 ## Table of Contents
 
-- [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Demo](#demo)
 
-## Features
-
-- List of features and functionalities.
-- Highlight any unique aspects or key benefits.
 
 ## Installation
-
-### Prerequisites
-
-- **Python version: 3.9**
-- **Other dependencies:**
-    - numpy, 
-    - mujoco, 
-    - stable_baselines3, 
-    - gymnasium, 
-    - opencv, 
-    - ikpy,
-    - imageio
 
 ### Steps
 
@@ -42,7 +28,7 @@ This project is a part of a Master Thesis. Main goal is to create a simulation f
 2. Create a Conda environment (optional but recommended):
 
     ```sh
-    conda env create -f environment.yml
+    conda env create -f environment.yaml
     conda activate my_env
     ```
 
@@ -66,6 +52,8 @@ This project is a part of a Master Thesis. Main goal is to create a simulation f
 
 
 ### Tests
+Repository contains scripts for testing separate parts of the system.
+
 - To run environment with agent taking random actions run environment.py script
 
     ```sh
@@ -89,3 +77,13 @@ This project is a part of a Master Thesis. Main goal is to create a simulation f
     ```sh
     python tests/test_controller.py
     ```
+
+
+## Demo
+
+
+[System demonstration](media/system.mp4)
+
+[Simulation demonstration](media/simulation_cut.mp4)
+
+[Sim2Real demonstration](media/real_demo.mp4)
